@@ -627,14 +627,8 @@ function finishLotLocal(winnerOrNull){
       state._unsold.push(item);
     }
     state.revealing = { item, price, winner: winnerOrNull, categoryLabel:null };
-    g.lotIndex += 1;
     g.nextStarter = otherRole(g.nextStarter);
-    setTimeout(()=>{
-      state.revealing=null;
-      if(g.lotIndex >= g.totalLots){ applyPracticeLeftoversOpen(); state.screen="results"; }
-      else { g.currentItem = state._lots[g.lotIndex]; startTurnAuctionLocal(); }
-      render();
-    }, 1900);
+    setTimeout(()=>{ state.revealing=null; drawOpenLotLocal(); render(); }, 1900);
   }
   render();
 }
@@ -688,11 +682,11 @@ function aiActPractice(){
 // ---------- PRACTICE: OPEN THEMES ----------
 
 function startPracticeOpen(){
-  const lots = shuffleArr(state.pool).slice(0, 10);
+  const lots = shuffleArr(state.pool);
   state.game = {
     theme: state.theme==="__custom__" ? state.customText : state.theme,
     themeType: "open", phase: "auction",
-    lotIndex: 0, totalLots: lots.length, currentItem: lots[0],
+    lotIndex: 0, totalLots: lots.length, currentItem: null,
     currentBid:0, currentBidder:null, turn:"me", openPasses:0, nextStarter:"me",
     resolved: null,
     me: { budget: 20, items: [] },
@@ -701,21 +695,31 @@ function startPracticeOpen(){
   state._lots = lots;
   state._unsold = [];
   state.screen = "auction";
-  startTurnAuctionLocal();
+  drawOpenLotLocal();
   render();
 }
 
-function applyPracticeLeftoversOpen(){
+function drawOpenLotLocal(){
   const g = state.game;
-  [["me","opponent"],["opponent","me"]].forEach(([key,otherKey])=>{
-    if(g[key].items.length < 5 && g[otherKey].items.length >= 5){
-      state._unsold.sort(()=>Math.random()-0.5);
-      while(g[key].items.length < 5 && state._unsold.length){
-        const it = state._unsold.shift();
-        g[key].items.push({ n:it, p:0, freebie:true });
-      }
-    }
-  });
+  const meNeeds = g.me.items.length < 5;
+  const oppNeeds = g.opponent.items.length < 5;
+  if(!meNeeds && !oppNeeds){ state.screen = "results"; return; }
+
+  let item;
+  if(g.lotIndex < state._lots.length){ item = state._lots[g.lotIndex]; g.lotIndex += 1; }
+  else if(state._unsold.length){ item = state._unsold.shift(); }
+  else { item = "Bonus pick"; }
+  g.currentItem = item;
+
+  if(meNeeds && oppNeeds){
+    startTurnAuctionLocal();
+  } else {
+    const soloKey = meNeeds ? "me" : "opp";
+    const solo = soloKey==="me" ? g.me : g.opponent;
+    solo.items.push({ n:item, p:0, freebie:true });
+    state.revealing = { item, price:0, winner:soloKey, categoryLabel:null };
+    setTimeout(()=>{ state.revealing=null; drawOpenLotLocal(); render(); }, 1900);
+  }
 }
 
 // ---------- PRACTICE: SLOTTED FOOTBALL ----------
