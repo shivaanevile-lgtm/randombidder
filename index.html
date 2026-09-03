@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Your Best ___</title>
+<style>
+  :root{
+    --paper:#F5EFE3;
+    --card:#FDFBF5;
+    --ink:#211E1A;
+    --ink-soft:#7A7264;
+    --rust:#C1543C;
+    --rust-soft:#D97757;
+    --gold:#E3A62F;
+    --sage:#5C8A5C;
+    --line:rgba(33,30,26,0.10);
+    --mono: ui-monospace, 'SF Mono', 'Menlo', 'Consolas', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --serif: Georgia, 'Iowan Old Style', serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--serif);
+    min-height:100vh;
+    padding:28px 16px 60px;
+  }
+  .wrap{max-width:760px;margin:0 auto;}
+
+  .eyebrow{
+    font-family:var(--sans);
+    font-size:12px;
+    letter-spacing:1.5px;
+    color:var(--ink-soft);
+    text-transform:uppercase;
+    margin-bottom:10px;
+  }
+  h1{
+    font-size:clamp(30px,5.5vw,42px);
+    margin:0 0 6px;
+    letter-spacing:-0.3px;
+    line-height:1.05;
+    font-weight:400;
+  }
+  .sub{
+    font-family:var(--sans);
+    color:var(--ink-soft);
+    font-size:15px;
+    margin-bottom:26px;
+    line-height:1.5;
+  }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:22px;
+    padding:26px 28px;
+    margin-bottom:18px;
+  }
+
+  label{
+    display:block;
+    font-family:var(--sans);
+    font-size:12px;
+    letter-spacing:0.8px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:12px;
+  }
+  input[type=text], input[type=number]{
+    width:100%;
+    padding:12px 14px;
+    font-size:16px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:#fff;
+    font-family:var(--sans);
+    margin-bottom:14px;
+  }
+  input[type=number]{font-family:var(--mono);font-weight:700;font-size:20px;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;}
+  .chip{
+    font-family:var(--sans);
+    font-size:14px;
+    padding:10px 18px;
+    border:1px solid var(--line);
+    border-radius:30px;
+    background:#fff;
+    cursor:pointer;
+    color:var(--ink);
+    transition:all .15s;
+  }
+  .chip:hover{border-color:var(--rust);color:var(--rust);}
+  .chip.active{background:var(--rust);border-color:var(--rust);color:#fff;font-weight:600;}
+
+  .btn{
+    font-family:var(--sans);
+    font-size:16px;
+    font-weight:600;
+    padding:14px 22px;
+    border-radius:14px;
+    border:none;
+    cursor:pointer;
+    background:var(--rust);
+    color:#fff;
+    transition:transform .1s, background .15s;
+  }
+  .btn:hover{background:var(--rust-soft);transform:translateY(-1px);}
+  .btn:active{transform:translateY(0);}
+  .btn:disabled{opacity:0.35;cursor:not-allowed;transform:none;}
+  .btn.secondary{background:transparent;border:1px solid var(--line);color:var(--ink);}
+  .btn.secondary:hover{border-color:var(--rust);color:var(--rust);background:transparent;}
+  .btn.wide{width:100%;text-align:center;margin-top:4px;}
+
+  .mode-card{cursor:pointer;transition:border-color .15s;border:1.5px solid var(--line);}
+  .mode-card:hover{border-color:var(--rust);}
+  .mode-card h3{margin:0 0 4px;font-size:20px;font-weight:400;font-family:var(--serif);}
+  .mode-card p{margin:0;font-family:var(--sans);font-size:13.5px;color:var(--ink-soft);line-height:1.5;}
+
+  .code-display{font-family:var(--mono);font-size:40px;font-weight:700;letter-spacing:6px;color:var(--rust);text-align:center;padding:18px 0;}
+  .error-msg{font-family:var(--sans);font-size:13.5px;color:var(--rust);background:rgba(193,84,60,0.08);border-radius:10px;padding:10px 14px;margin-bottom:12px;}
+
+  .lot-card{text-align:center;padding:38px 28px;}
+  .lot-name{font-family:var(--serif);font-size:32px;margin:6px 0 22px;}
+  .lot-meta{font-family:var(--sans);font-size:12px;color:var(--ink-soft);letter-spacing:0.6px;text-transform:uppercase;margin-bottom:4px;}
+
+  .bid-row{display:flex;gap:10px;align-items:stretch;max-width:320px;margin:0 auto;}
+  .bid-row input{margin-bottom:0;flex:1;text-align:center;}
+
+  .waiting{font-family:var(--sans);color:var(--ink-soft);font-style:italic;font-size:14px;margin-top:14px;}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--line);}
+  .dot.on{background:var(--sage);}
+
+  .reveal-row{display:flex;justify-content:center;gap:36px;margin:20px 0 6px;font-family:var(--mono);}
+  .reveal-col{text-align:center;}
+  .reveal-col .name{font-family:var(--sans);font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;}
+  .reveal-col .amt{font-size:30px;font-weight:700;}
+  .reveal-col.winner .amt{color:var(--sage);}
+  .reveal-col.loser .amt{color:var(--ink-soft);}
+  .reveal-tag{font-family:var(--sans);font-size:13px;margin-top:14px;color:var(--ink-soft);}
+
+  .squad-progress{font-family:var(--sans);font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:14px;letter-spacing:0.2px;}
+  .squad-progress b{color:var(--ink);}
+
+  .stalls{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
+  @media(max-width:640px){.stalls{grid-template-columns:1fr;}}
+  .stall{padding:20px 22px;}
+  .stall-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;}
+  .stall-head h3{margin:0;font-size:18px;font-weight:400;font-family:var(--serif);}
+  .budget{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--rust);}
+  .budget-label{font-family:var(--sans);font-size:12px;color:var(--ink-soft);margin-bottom:12px;}
+  .spectrum{height:6px;border-radius:6px;background:linear-gradient(90deg, var(--rust) 0%, var(--gold) 50%, var(--sage) 100%);margin-bottom:14px;opacity:0.85;}
+  .cart{list-style:none;margin:0;padding:0;font-size:14px;}
+  .cart li{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-family:var(--sans);font-size:13.5px;}
+  .cart li:last-child{border-bottom:none;}
+  .cart li .tagcat{color:var(--ink-soft);font-size:11px;text-transform:uppercase;letter-spacing:0.4px;margin-right:6px;}
+  .cart li span:last-child{font-family:var(--mono);color:var(--ink-soft);font-weight:600;}
+  .cart li.freebie span:first-child{color:var(--sage);font-style:italic;}
+  .cart li.freebie span:last-child{color:var(--sage);}
+  .cart .empty{color:var(--ink-soft);font-style:italic;font-size:13px;font-family:var(--sans);}
+
+  .progress-label{font-family:var(--mono);font-size:13px;color:var(--ink-soft);text-align:center;margin-bottom:10px;}
+
+  .verdict{font-family:var(--sans);line-height:1.6;font-size:15px;margin-top:8px;color:var(--ink);white-space:pre-wrap;}
+  .loading{font-family:var(--sans);color:var(--ink-soft);font-style:italic;font-size:14px;}
+  .winner-badge{display:inline-block;background:var(--sage);color:#fff;font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:0.4px;padding:4px 12px;border-radius:20px;margin-left:10px;vertical-align:middle;}
+  .results-title{font-family:var(--serif);font-size:26px;font-weight:400;margin:0 0 4px;}
+  footer{text-align:center;color:var(--ink-soft);font-family:var(--sans);font-size:12px;margin-top:36px;}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+const OPEN_THEMES = {
+  "Backyard": ["Kiddie pool","Hammock","String lights","Rusty old grill","Lawn flamingo","Bug zapper","Cornhole set","Garden gnome","Inflatable movie screen","Mini fire pit","Bean bag chairs","Sprinkler","Tiki torches","Bird feeder","Disco ball"],
+  "Gaming Room": ["Bean bag throne","RGB light strip","Mini fridge","Busted arcade cabinet","Foam dartboard","Retro poster wall","Standing fan","Snack shelf","Off-brand controllers","Bluetooth speaker (one ear)","Folding card table","Neon 'GAME OVER' sign","Lava lamp","Squeaky recliner","Mystery cardboard box"],
+  "Underground Bunker": ["Canned beans (case)","Hand-crank flashlight","Water barrel","Board games stash","Single gas mask","Ham radio","Bunk bed","Used air filter","Industrial duct tape","Small solar panel","Emergency generator","First-aid kit","Rat traps","Deck of cards"],
+  "Perfect Vacation": ["Unlimited food","Business class flight","Beachfront resort","5-star hotel","Epic road trip","Private tour guide","Bottomless drinks","Skip-the-line passes","Rental car upgrade","Spa day","Street food tour","Adventure excursion","Middle seat (bad luck)","Car breaks down (bad luck)"],
+  "Superhero Draft": ["Spiderman","Hulk","Captain America","Thor","Black Panther","Wolverine","Batman","The Flash","Wonder Woman","Iron Man","Green Lantern","Aquaman","Superman","Doctor Strange"],
+  "Perfect Life": ["$100k a month","Zero-calorie food","A celebrity uncle","3x world champion status","Private jet access","Never need sleep","Photographic memory","Own private island","Time-freeze power","Unlimited food delivery credit","Immunity to hangovers","Teleportation","Perfect hair forever","Always win arguments"]
+};
+
+const FOOTBALL_THEME = {
+  label: "Football (5-a-side)",
+  categories: [
+    { cat:"GK", label:"Goalkeeper", count:1 },
+    { cat:"DEF", label:"Defender", count:1 },
+    { cat:"MID", label:"Midfielder", count:2 },
+    { cat:"ATT", label:"Attacker", count:1 }
+  ],
+  pools: {
+    GK: ["Human wall keeper","Penalty save specialist","Sweeper-keeper","Rebound magnet hands","Command-the-box giant","One-on-one wizard"],
+    DEF: ["Brick wall centre-back","Overlapping fullback","Tackle machine","Aerial dominance beast","Recovery pace demon","Ball-playing sweeper"],
+    MID: ["Box-to-box engine","Deep-lying playmaker","Set-piece specialist","Pressing terrier","Vision & through-balls","Late-runner poacher","Tempo controller"],
+    ATT: ["Clinical finisher","Pace-and-power winger","Aerial target man","Dribbling wizard","Free-kick specialist"]
+  }
+};
+
+let state = {
+  screen: "setup",
+  theme: null,
+  themeType: null,   // "open" | "slotted"
+  pool: [],
+  customText: "",
+  loadingCustom: false,
+  connectMode: null,
+  joinCode: "",
+  errorMsg: null,
+  connecting: false,
+
+  roomCode: null,
+  token: null,
+  role: null,
+
+  game: null,
+  revealing: null,
+  bidValue: "",
+  verdict: null,
+  winner: null,
+  loadingVerdict: false
+};
+
+let pollTimer = null;
+
+function render(){
+  const app = document.getElementById("app");
+  if(state.screen==="setup") app.innerHTML = renderSetup();
+  else if(state.screen==="connect") app.innerHTML = renderConnect();
+  else if(state.screen==="room-wait") app.innerHTML = renderRoomWait();
+  else if(state.screen==="auction") app.innerHTML = renderAuction();
+  else if(state.screen==="results") app.innerHTML = renderResults();
+  attachHandlers();
+}
+
+// ---------- SETUP ----------
+
+function renderSetup(){
+  return `
+    <div class="eyebrow">A live auction draft for two</div>
+    <h1>Build Your Best ___</h1>
+    <div class="sub">$20 each. Lots come up one at a time — bid blind, highest bid wins. Fall short and you get handed the leftovers.</div>
+
+    <div class="card">
+      <label>Pick a theme</label>
+      <div class="row">
+        ${Object.keys(OPEN_THEMES).map(t=>`<button class="chip ${state.theme===t?'active':''}" data-theme="${t}">${t}</button>`).join("")}
+        <button class="chip ${state.theme==='__football__'?'active':''}" data-theme="__football__">${FOOTBALL_THEME.label}</button>
+        <button class="chip ${state.theme==='__custom__'?'active':''}" data-theme="__custom__">Custom...</button>
+      </div>
+      ${state.theme==="__football__" ? `
+        <div class="sub" style="margin-bottom:0;">Draft order: <b>1 Goalkeeper → 1 Defender → 2 Midfielders → 1 Attacker.</b> You bid on each position until your side is filled.</div>
+      ` : ""}
+      ${state.theme==="__custom__" ? `
+        <input type="text" id="custom-input" placeholder="e.g. treehouse, food truck, wizard's tower..." value="${state.customText||''}">
+        <button class="btn secondary" id="gen-custom">${state.loadingCustom?'Cooking up items...':'Generate items'}</button>
+      ` : ""}
+    </div>
+
+    <div class="card mode-card" data-connect="create">
+      <h3>Play online</h3>
+      <p>Create a room, share the code with a friend on their own device, and bid it out live.</p>
+    </div>
+    <div class="card mode-card" data-connect="join">
+      <h3>Join a room</h3>
+      <p>Got a code from a friend? Jump into their auction.</p>
+    </div>
+    <div class="card mode-card" data-connect="practice">
+      <h3>Practice vs AI</h3>
+      <p>No code needed — bid against an AI opponent right here, right now.</p>
+    </div>
+  `;
+}
+
+// ---------- CONNECT ----------
+
+function renderConnect(){
+  const themeReady = state.themeType === "slotted" || state.pool.length > 0;
+  const themeLabel = state.theme==="__custom__" ? state.customText : state.theme==="__football__" ? FOOTBALL_THEME.label : state.theme;
+  return `
+    <div class="eyebrow">${state.connectMode==="join" ? "Join a room" : state.connectMode==="create" ? "Create a room" : "Practice vs AI"}</div>
+    <h1>${state.connectMode==="join" ? "Enter the code" : "Ready to go"}</h1>
+    <div class="sub">${state.connectMode==="join" ? "Ask your opponent for their 5-character room code." : "Theme: " + (themeLabel || "none picked yet")}</div>
+
+    ${state.errorMsg ? `<div class="error-msg">${state.errorMsg}</div>` : ""}
+
+    <div class="card">
+      ${state.connectMode==="join" ? `
+        <label>Room code</label>
+        <input type="text" id="join-code" maxlength="5" placeholder="ABCDE" value="${state.joinCode}" style="text-transform:uppercase;letter-spacing:4px;font-family:var(--mono);font-size:20px;text-align:center;">
+      ` : ""}
+      <button class="btn wide" id="go-btn" ${themeReady ? '' : 'disabled'}>
+        ${state.connecting ? "Connecting..." : state.connectMode==="join" ? "Join room" : state.connectMode==="create" ? "Create room" : "Start practice round"}
+      </button>
+    </div>
+
+    <button class="btn secondary wide" id="back-btn">Back</button>
+  `;
+}
+
+// ---------- ROOM WAIT ----------
+
+function renderRoomWait(){
+  return `
+    <div class="eyebrow">${state.game ? state.game.theme : ''}</div>
+    <h1>Waiting for your opponent</h1>
+    <div class="sub">Send them this code. As soon as they join, the auction starts.</div>
+    <div class="card">
+      <div class="code-display">${state.roomCode}</div>
+      <button class="btn secondary wide" id="copy-btn">Copy code</button>
+    </div>
+    <button class="btn secondary wide" id="leave-btn">Cancel</button>
+  `;
+}
+
+// ---------- AUCTION ----------
+
+function squadProgressText(filled, categories){
+  return categories.map(c=>{
+    const have = filled[c.cat] || 0;
+    return `<b>${c.label}${c.count>1?'s':''}</b> ${have}/${c.count}`;
+  }).join(" &nbsp;·&nbsp; ");
+}
+
+function renderAuction(){
+  const g = state.game;
+  if(!g) return `<div class="loading">Loading...</div>`;
+  const isSlotted = g.themeType === "slotted";
+
+  if(state.revealing){
+    const r = state.revealing;
+    const myBid = r.myBid;
+    const oppBid = r.oppBid;
+    const iWon = r.winner === "me";
+    const oppWon = r.winner === "opp";
+    return `
+      <div class="eyebrow">${g.theme}${isSlotted && r.categoryLabel ? " · " + r.categoryLabel : ""}</div>
+      <h1>Sold?</h1>
+      <div class="card lot-card">
+        <div class="lot-name">${r.item}</div>
+        <div class="reveal-row">
+          <div class="reveal-col ${iWon?'winner':oppWon?'loser':''}">
+            <div class="name">You</div>
+            <div class="amt">${myBid===null?'—':'$'+myBid}</div>
+          </div>
+          <div class="reveal-col ${oppWon?'winner':iWon?'loser':''}">
+            <div class="name">${g.opponent ? g.opponent.name : 'AI'}</div>
+            <div class="amt">${oppBid===null?'—':'$'+oppBid}</div>
+          </div>
+        </div>
+        <div class="reveal-tag">${r.winner ? (iWon ? "You win the lot." : "They win the lot.") : "Nobody claims it."}</div>
+      </div>
+    `;
+  }
+
+  const meEligible = isSlotted ? g.meEligible : true;
+  const submitted = g.me.submitted;
+
+  return `
+    <div class="eyebrow">${g.theme}</div>
+    <h1>Live auction</h1>
+    ${isSlotted
+      ? `<div class="squad-progress">${squadProgressText(g.me.filled, g.categories)}</div>`
+      : `<div class="progress-label">Lot ${g.lotIndex + 1} of ${g.totalLots}</div>`
+    }
+
+    <div class="card lot-card">
+      <div class="lot-meta">${isSlotted ? "Bidding for: " + (g.currentCategoryLabel || "") : "Up for bid"}</div>
+      <div class="lot-name">${g.currentItem || "—"}</div>
+
+      ${!meEligible ? `
+        <div class="waiting"><span class="dot on"></span>You've already filled this spot — waiting on ${g.opponent ? g.opponent.name : 'the AI'}...</div>
+      ` : submitted ? `
+        <div class="waiting"><span class="dot on"></span>Bid locked in — waiting on ${g.opponent ? g.opponent.name : 'the AI'}...</div>
+      ` : `
+        <div class="bid-row">
+          <input type="number" id="bid-input" min="0" max="${g.me.budget}" placeholder="0" value="${state.bidValue}">
+          <button class="btn" id="submit-bid">Bid</button>
+        </div>
+        <div class="waiting">You have $${g.me.budget} left. Bid $0 to pass on this one.</div>
+      `}
+    </div>
+
+    <div class="stalls">
+      ${renderStall(g.me, "You", isSlotted)}
+      ${renderStall(g.opponent || {name:'AI',budget:20,items:[]}, g.opponent ? g.opponent.name : "AI", isSlotted)}
+    </div>
+  `;
+}
+
+function renderStall(p, label){
+  return `
+    <div class="card stall">
+      <div class="stall-head">
+        <h3>${label}</h3>
+        <span class="budget">$${p.budget}</span>
+      </div>
+      <div class="budget-label">remaining · ${p.items.length} item${p.items.length===1?'':'s'}</div>
+      <div class="spectrum"></div>
+      <ul class="cart">
+        ${p.items.length ? p.items.map(it=>`<li class="${it.freebie?'freebie':''}"><span>${it.freebie?'🎁 ':''}${it.cat?`<span class="tagcat">${it.cat}</span>`:''}${it.n}</span><span>${it.freebie?'free':'$'+it.p}</span></li>`).join("") : `<li class="empty">Nothing yet</li>`}
+      </ul>
+    </div>
+  `;
+}
+
+// ---------- RESULTS ----------
+
+function renderResults(){
+  const g = state.game;
+  const oppLabel = g.opponent ? g.opponent.name : "AI";
+  return `
+    <div class="eyebrow">${g.theme}</div>
+    <h1>The reveal</h1>
+    <div class="sub">Here's what you and ${oppLabel} walked away with.</div>
+
+    <div class="stalls">
+      ${renderStall(g.me, "You")}
+      ${renderStall(g.opponent || {name:'AI',budget:20,items:[]}, oppLabel)}
+    </div>
+
+    <div class="card">
+      <div class="results-title">Judgment ${state.winner?`<span class="winner-badge">${state.winner} wins</span>`:''}</div>
+      ${state.loadingVerdict ? `<div class="loading">The judge is deliberating...</div>` : ""}
+      ${state.verdict ? `<div class="verdict">${state.verdict}</div>` : ""}
+      ${!state.verdict && !state.loadingVerdict ? `<button class="btn" id="judge-btn" style="margin-top:8px;">Judge the builds</button>` : ""}
+    </div>
+
+    <button class="btn secondary wide" id="restart-btn">Build something else</button>
+  `;
+}
+
+// ---------- HANDLERS ----------
+
+function attachHandlers(){
+  document.querySelectorAll("[data-theme]").forEach(el=>{
+    el.onclick = ()=>{
+      const t = el.dataset.theme;
+      state.theme = t;
+      if(t==="__custom__"){
+        state.pool = [];
+        state.themeType = "open";
+      } else if(t==="__football__"){
+        state.pool = [];
+        state.themeType = "slotted";
+      } else {
+        state.pool = [...OPEN_THEMES[t]];
+        state.themeType = "open";
+      }
+      render();
+    };
+  });
+
+  const customInput = document.getElementById("custom-input");
+  if(customInput) customInput.oninput = (e)=>{ state.customText = e.target.value; };
+
+  const genBtn = document.getElementById("gen-custom");
+  if(genBtn) genBtn.onclick = generateCustomTheme;
+
+  document.querySelectorAll("[data-connect]").forEach(el=>{
+    el.onclick = ()=>{
+      if(!state.themeType) return;
+      if(state.themeType==="open" && !state.pool.length) return;
+      state.connectMode = el.dataset.connect;
+      state.errorMsg = null;
+      state.screen = "connect";
+      render();
+    };
+  });
+
+  const backBtn = document.getElementById("back-btn");
+  if(backBtn) backBtn.onclick = ()=>{ state.screen="setup"; state.errorMsg=null; render(); };
+
+  const joinCodeInput = document.getElementById("join-code");
+  if(joinCodeInput) joinCodeInput.oninput = (e)=>{ state.joinCode = e.target.value.toUpperCase(); };
+
+  const goBtn = document.getElementById("go-btn");
+  if(goBtn) goBtn.onclick = handleGo;
+
+  const copyBtn = document.getElementById("copy-btn");
+  if(copyBtn) copyBtn.onclick = ()=>{
+    navigator.clipboard?.writeText(state.roomCode).catch(()=>{});
+    copyBtn.textContent = "Copied!";
+    setTimeout(()=>{ copyBtn.textContent = "Copy code"; }, 1500);
+  };
+
+  const leaveBtn = document.getElementById("leave-btn");
+  if(leaveBtn) leaveBtn.onclick = ()=>{ stopPolling(); state.screen = "setup"; render(); };
+
+  const bidInput = document.getElementById("bid-input");
+  if(bidInput) bidInput.oninput = (e)=>{ state.bidValue = e.target.value; };
+
+  const submitBid = document.getElementById("submit-bid");
+  if(submitBid) submitBid.onclick = handleSubmitBid;
+
+  const judgeBtn = document.getElementById("judge-btn");
+  if(judgeBtn) judgeBtn.onclick = judgeBuilds;
+
+  const restartBtn = document.getElementById("restart-btn");
+  if(restartBtn) restartBtn.onclick = ()=>{
+    stopPolling();
+    state = {screen:"setup", theme:null, themeType:null, pool:[], customText:"", loadingCustom:false,
+      connectMode:null, joinCode:"", errorMsg:null, connecting:false,
+      roomCode:null, token:null, role:null, game:null, revealing:null, bidValue:"",
+      verdict:null, winner:null, loadingVerdict:false};
+    render();
+  };
+}
+
+async function handleGo(){
+  state.errorMsg = null;
+
+  if(state.connectMode === "practice"){
+    if(state.themeType === "slotted") startPracticeSlotted();
+    else startPracticeOpen();
+    return;
+  }
+
+  if(state.connectMode === "create"){
+    state.connecting = true; render();
+    try{
+      const themeName = state.theme==="__custom__" ? state.customText : state.theme==="__football__" ? FOOTBALL_THEME.label : state.theme;
+      const payload = state.themeType==="slotted"
+        ? { action:"create", themeType:"slotted", theme: themeName, categories: FOOTBALL_THEME.categories, pools: FOOTBALL_THEME.pools }
+        : { action:"create", themeType:"open", theme: themeName, lots: state.pool };
+      const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
+      state.roomCode = data.code;
+      state.token = data.token;
+      state.role = data.role;
+      state.connecting = false;
+      state.game = { theme: themeName };
+      state.screen = "room-wait";
+      render();
+      startPolling();
+    }catch(e){
+      state.connecting = false;
+      state.errorMsg = "Couldn't reach the room server (" + e.message + "). Online rooms only work once this is deployed to Netlify — try Practice vs AI in the meantime.";
+      render();
+    }
+    return;
+  }
+
+  if(state.connectMode === "join"){
+    if(state.joinCode.length < 5){
+      state.errorMsg = "Enter the full 5-character code.";
+      render();
+      return;
+    }
+    state.connecting = true; render();
+    try{
+      const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ action:"join", code: state.joinCode }) });
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
+      state.roomCode = data.code;
+      state.token = data.token;
+      state.role = data.role;
+      state.connecting = false;
+      state.screen = "auction";
+      render();
+      startPolling();
+    }catch(e){
+      state.connecting = false;
+      state.errorMsg = "Couldn't join that room (" + e.message + ").";
+      render();
+    }
+  }
+}
+
+// ---------- ONLINE POLLING ----------
+
+function startPolling(){
+  stopPolling();
+  pollOnce();
+  pollTimer = setInterval(pollOnce, 1200);
+}
+function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer = null; } }
+
+async function pollOnce(){
+  try{
+    const res = await fetch(`/api/room?code=${state.roomCode}&token=${state.token}`);
+    const data = await res.json();
+    if(data.error) return;
+    applyServerState(data);
+  }catch(e){ /* transient */ }
+}
+
+function applyServerState(data){
+  const prevKey = state.game && state.game.resolved ? JSON.stringify(state.game.resolved) : null;
+  const newKey = data.resolved ? JSON.stringify(data.resolved) : null;
+
+  state.game = {
+    theme: data.theme, themeType: data.themeType, phase: data.phase,
+    lotIndex: data.lotIndex, totalLots: data.totalLots,
+    currentItem: data.currentItem, currentCategoryLabel: data.currentCategoryLabel,
+    meEligible: data.meEligible, resolved: data.resolved,
+    me: data.me, opponent: data.opponent,
+    categories: data.themeType==="slotted" ? FOOTBALL_THEME.categories : null
+  };
+  if(data.themeType==="slotted" && data.me){
+    // derive filled counts from items for progress display
+    const filled = {};
+    FOOTBALL_THEME.categories.forEach(c=>{ filled[c.cat]=0; });
+    data.me.items.forEach(it=>{ if(it.cat) filled[it.cat] = (filled[it.cat]||0)+1; });
+    state.game.me.filled = filled;
+  }
+
+  if(data.phase === "lobby"){
+    state.screen = "room-wait";
+  } else if(data.phase === "auction"){
+    if(state.screen !== "auction") state.screen = "auction";
+    if(newKey && newKey !== prevKey && !state.revealing){
+      const r = data.resolved;
+      state.revealing = {
+        item: r.item,
+        categoryLabel: r.categoryLabel,
+        myBid: state.role==="p1" ? (r.eligibleP1===false ? null : r.p1Bid) : (r.eligibleP2===false ? null : r.p2Bid),
+        oppBid: state.role==="p1" ? (r.eligibleP2===false ? null : r.p2Bid) : (r.eligibleP1===false ? null : r.p1Bid),
+        winner: r.winner === state.role ? "me" : (r.winner ? "opp" : null)
+      };
+      setTimeout(()=>{ state.revealing = null; render(); }, 2400);
+    }
+    state.bidValue = "";
+  } else if(data.phase === "results"){
+    if(!state.revealing){ state.screen = "results"; stopPolling(); }
+  }
+  render();
+}
+
+async function handleSubmitBid(){
+  const g = state.game;
+  const amt = Math.max(0, Math.min(g.me.budget, Math.floor(Number(state.bidValue) || 0)));
+
+  if(state.connectMode === "practice"){
+    if(g.themeType === "slotted") submitSlottedBid(amt);
+    else submitPracticeBid(amt);
+    return;
+  }
+
+  try{
+    const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ action:"bid", code: state.roomCode, token: state.token, amount: amt }) });
+    const data = await res.json();
+    if(data.error) return;
+    applyServerState(data);
+  }catch(e){ /* retry on next poll */ }
+}
+
+// ---------- PRACTICE: OPEN THEMES ----------
+
+function shuffleArr(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function startPracticeOpen(){
+  const lots = shuffleArr(state.pool).slice(0, 10);
+  state.game = {
+    theme: state.theme==="__custom__" ? state.customText : state.theme,
+    themeType: "open", phase: "auction",
+    lotIndex: 0, totalLots: lots.length, currentItem: lots[0], resolved: null,
+    me: { budget: 20, items: [], submitted: false },
+    opponent: { name: "AI", budget: 20, items: [], submitted: false }
+  };
+  state._lots = lots;
+  state._unsold = [];
+  state.screen = "auction";
+  state.bidValue = "";
+  render();
+}
+
+function aiBidAmountOpen(){
+  const g = state.game;
+  const budget = g.opponent.budget;
+  const owned = g.opponent.items.length;
+  const lotsLeft = g.totalLots - g.lotIndex;
+  const stillNeeded = Math.max(0, 5 - owned);
+
+  if(stillNeeded > 0 && lotsLeft <= stillNeeded){
+    return Math.min(budget, 1 + Math.floor(Math.random()*2));
+  }
+  if(Math.random() < 0.18) return 0;
+  const reserve = Math.max(0, stillNeeded - 1);
+  const spendable = Math.max(0, budget - reserve);
+  return Math.min(spendable, Math.floor(Math.random() * 7));
+}
+
+function submitPracticeBid(myBid){
+  const g = state.game;
+  const aiBid = aiBidAmountOpen();
+  const item = g.currentItem;
+
+  let winner = null;
+  if(myBid > aiBid) winner = "me";
+  else if(aiBid > myBid) winner = "opp";
+
+  if(winner === "me"){
+    g.me.budget -= myBid;
+    g.me.items.push({ n:item, p:myBid, freebie:false });
+  } else if(winner === "opp"){
+    g.opponent.budget -= aiBid;
+    g.opponent.items.push({ n:item, p:aiBid, freebie:false });
+  } else {
+    state._unsold.push(item);
+  }
+
+  state.revealing = { item, myBid, oppBid: aiBid, winner };
+  g.lotIndex += 1;
+
+  setTimeout(()=>{
+    state.revealing = null;
+    if(g.lotIndex >= g.totalLots){
+      applyPracticeLeftoversOpen();
+      state.screen = "results";
+    } else {
+      g.currentItem = state._lots[g.lotIndex];
+      g.me.submitted = false;
+      g.opponent.submitted = false;
+      state.bidValue = "";
+    }
+    render();
+  }, 2400);
+  render();
+}
+
+function applyPracticeLeftoversOpen(){
+  const g = state.game;
+  [["me","opponent"],["opponent","me"]].forEach(([key,other])=>{
+    if(g[key].items.length < 5 && g[other].items.length >= 5){
+      state._unsold.sort(()=>Math.random()-0.5);
+      while(g[key].items.length < 5 && state._unsold.length){
+        const it = state._unsold.shift();
+        g[key].items.push({ n:it, p:0, freebie:true });
+      }
+    }
+  });
+}
+
+// ---------- PRACTICE: SLOTTED FOOTBALL ----------
+
+function startPracticeSlotted(){
+  const cats = FOOTBALL_THEME.categories.map(c=>({...c}));
+  const pools = {};
+  Object.keys(FOOTBALL_THEME.pools).forEach(k=>{ pools[k] = shuffleArr(FOOTBALL_THEME.pools[k]); });
+
+  state.game = {
+    theme: FOOTBALL_THEME.label, themeType: "slotted",
+    categories: cats, catIndex: 0, pools,
+    currentItem: null, currentCategoryLabel: null, meEligible: true, resolved: null,
+    me: { budget:20, items:[], submitted:false, filled:{GK:0,DEF:0,MID:0,ATT:0} },
+    opponent: { name:"AI", budget:20, items:[], submitted:false, filled:{GK:0,DEF:0,MID:0,ATT:0} }
+  };
+  state.screen = "auction";
+  state.bidValue = "";
+  drawNextSlottedLot();
+  render();
+}
+
+function currentCatInfo(){
+  const g = state.game;
+  return g.categories[g.catIndex];
+}
+
+function advanceCategoryIfNeeded(){
+  const g = state.game;
+  let info = currentCatInfo();
+  while(info && g.me.filled[info.cat] >= info.count && g.opponent.filled[info.cat] >= info.count){
+    g.catIndex += 1;
+    info = currentCatInfo();
+  }
+  return info;
+}
+
+function drawNextSlottedLot(){
+  const g = state.game;
+  const info = advanceCategoryIfNeeded();
+  if(!info){
+    applyPracticeLeftoversSlotted();
+    state.screen = "results";
+    return;
+  }
+  const meNeeds = g.me.filled[info.cat] < info.count;
+  const oppNeeds = g.opponent.filled[info.cat] < info.count;
+  g.meEligible = meNeeds;
+  g.eligibleOpp = oppNeeds;
+  g.currentCategory = info.cat;
+  g.currentCategoryLabel = info.label;
+
+  const pool = g.pools[info.cat];
+  g.currentItem = pool.length ? pool.shift() : "Free agent " + info.label.toLowerCase();
+  g.me.submitted = false;
+  g.opponent.submitted = false;
+  state.bidValue = "";
+
+  if(!meNeeds && oppNeeds){
+    // I'm out of this lot; resolve immediately against the AI alone
+    submitSlottedBid(0);
+  }
+}
+
+function totalRemainingNeeded(player){
+  const g = state.game;
+  let total = 0;
+  for(let i=g.catIndex; i<g.categories.length; i++){
+    const c = g.categories[i];
+    total += Math.max(0, c.count - (player.filled[c.cat]||0));
+  }
+  return Math.max(1, total);
+}
+
+function aiSlottedBidAmount(){
+  const g = state.game;
+  if(!g.eligibleOpp) return 0;
+  const budget = g.opponent.budget;
+  const needed = totalRemainingNeeded(g.opponent);
+  const perSlot = budget / needed;
+  const base = Math.max(1, Math.round(perSlot * (0.5 + Math.random())));
+  return Math.min(budget, base);
+}
+
+function submitSlottedBid(myBidRaw){
+  const g = state.game;
+  const item = g.currentItem;
+  const cat = g.currentCategory;
+  const catLabel = g.currentCategoryLabel;
+  const myBid = g.meEligible ? myBidRaw : 0;
+  const aiBid = aiSlottedBidAmount();
+
+  let winner = null;
+  if(g.meEligible && g.eligibleOpp){
+    if(myBid > aiBid) winner = "me"; else if(aiBid > myBid) winner = "opp";
+  } else if(g.meEligible && !g.eligibleOpp){
+    winner = myBid > 0 ? "me" : null;
+  } else if(!g.meEligible && g.eligibleOpp){
+    winner = aiBid > 0 ? "opp" : null;
+  }
+
+  if(winner === "me"){
+    g.me.budget -= myBid;
+    g.me.items.push({ n:item, p:myBid, freebie:false, cat });
+    g.me.filled[cat] += 1;
+  } else if(winner === "opp"){
+    g.opponent.budget -= aiBid;
+    g.opponent.items.push({ n:item, p:aiBid, freebie:false, cat });
+    g.opponent.filled[cat] += 1;
+  }
+
+  state.revealing = {
+    item, categoryLabel: catLabel,
+    myBid: g.meEligible ? myBid : null,
+    oppBid: g.eligibleOpp ? aiBid : null,
+    winner
+  };
+
+  setTimeout(()=>{
+    state.revealing = null;
+    drawNextSlottedLot();
+    render();
+  }, 2400);
+  render();
+}
+
+function applyPracticeLeftoversSlotted(){
+  const g = state.game;
+  [["me","opponent"],["opponent","me"]].forEach(([key])=>{
+    g.categories.forEach(info=>{
+      while(g[key].filled[info.cat] < info.count){
+        g[key].items.push({ n:"Free agent "+info.label.toLowerCase(), p:0, freebie:true, cat:info.cat });
+        g[key].filled[info.cat] += 1;
+      }
+    });
+  });
+}
+
+// ---------- AI HELPERS (custom theme + judge) ----------
+
+async function callClaude(promptText){
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 700,
+      messages: [{role:"user", content: promptText}]
+    })
+  });
+  const data = await response.json();
+  return data.content.map(b=>b.text||"").join("\\n");
+}
+
+async function generateCustomTheme(){
+  const text = (state.customText||"").trim();
+  if(!text) return;
+  state.loadingCustom = true;
+  render();
+  try{
+    const prompt = `Generate a shopping list for a "build your best ${text}" auction party game. Return ONLY valid JSON, no markdown fences, no preamble: an array of 14 short item name strings (no prices — this is an auction, players bid whatever they want). Keep names under 5 words, playful and specific to the theme.`;
+    const raw = await callClaude(prompt);
+    const clean = raw.replace(/\`\`\`json|\`\`\`/g, "").trim();
+    const items = JSON.parse(clean);
+    state.pool = items.map(String);
+    state.theme = "__custom__";
+    state.themeType = "open";
+  }catch(e){
+    alert("Couldn't generate that theme — try again or pick a preset.");
+  }
+  state.loadingCustom = false;
+  render();
+}
+
+async function judgeBuilds(){
+  state.loadingVerdict = true;
+  render();
+  const g = state.game;
+  const fmt = (it)=> `${it.cat?it.cat+': ':''}${it.n} ($${it.p}${it.freebie?', freebie':''})`;
+  const meList = g.me.items.map(fmt).join(", ");
+  const oppLabel = g.opponent ? g.opponent.name : "AI";
+  const oppList = (g.opponent ? g.opponent.items : []).map(fmt).join(", ");
+  const themeName = g.theme || state.theme;
+  const prompt = `You are a witty, slightly savage auction judge. Two players each had a $20 budget to bid on lots for their best "${themeName}".
+
+You bought: ${meList}
+${oppLabel} bought: ${oppList}
+
+Write a short, funny judgment (5-8 sentences) roasting or praising their choices, then declare a winner on the final line in exactly this format: "WINNER: <name>" (use "You" or "${oppLabel}"). Be playful, not mean-spirited.`;
+  try{
+    const raw = await callClaude(prompt);
+    const match = raw.match(/WINNER:\\s*(.+)/i);
+    state.winner = match ? match[1].trim() : null;
+    state.verdict = raw.replace(/WINNER:\\s*.+/i, "").trim();
+  }catch(e){
+    state.verdict = "The judge is unreachable right now, but honestly? You both did great.";
+  }
+  state.loadingVerdict = false;
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
