@@ -116,10 +116,10 @@ const FOOTBALL_THEME = {
     { cat:"ATT", label:"Attacker", count:1 }
   ],
   pools: {
-    GK: ["Alisson","Ederson","Courtois","Ter Stegen","Oblak","Neuer"],
-    DEF: ["Van Dijk","Ruben Dias","Marquinhos","Alaba","Hakimi","Cancelo"],
-    MID: ["De Bruyne","Modric","Bellingham","Pedri","Kimmich","Rodri","Casemiro"],
-    ATT: ["Messi","Ronaldo","Mbappe","Haaland","Neymar","Salah"]
+    GK: ["Alisson","Ederson","Donnarumma","Emiliano Martinez","David Raya","Mike Maignan","Diogo Costa","Andriy Lunin","Unai Simón","Marc-André ter Stegen","Yassine Bounou","Illan Meslier"],
+    DEF: ["Van Dijk","William Saliba","Ruben Dias","Josko Gvardiol","Alessandro Bastoni","Achraf Hakimi","Theo Hernandez","Trent Alexander-Arnold","Jules Kounde","Antonio Rudiger","Dayot Upamecano","Marquinhos"],
+    MID: ["Jude Bellingham","Pedri","Gavi","Rodri","Declan Rice","Frenkie de Jong","Martin Odegaard","Federico Valverde","Bruno Fernandes","Enzo Fernandez","Moises Caicedo","Aurelien Tchouameni","Jamal Musiala","Florian Wirtz"],
+    ATT: ["Mbappe","Haaland","Vinicius Jr","Salah","Lautaro Martinez","Harry Kane","Bukayo Saka","Ousmane Dembele","Rafael Leao","Victor Osimhen","Lamine Yamal","Khvicha Kvaratskhelia"]
   }
 };
 
@@ -650,16 +650,15 @@ function aiActPractice(){
   let maxWillingness;
   if(g.themeType === "slotted"){
     const needed = totalRemainingNeededLocal(g.opponent, g.categories, g.catIndex);
-    maxWillingness = budget / needed * (1.1 + Math.random()*0.6);
+    maxWillingness = (budget / needed) * (1.5 + Math.random()*1.0);
   } else {
     const owned = g.opponent.items.length;
-    const lotsLeft = g.totalLots - g.lotIndex;
     const stillNeeded = Math.max(1, 5 - owned);
-    maxWillingness = (budget / Math.max(1, Math.min(lotsLeft, stillNeeded))) * (0.9 + Math.random()*0.7);
+    maxWillingness = (budget / stillNeeded) * (1.3 + Math.random()*0.9);
   }
 
-  const nextBid = g.currentBid + 1 + Math.floor(Math.random()*2);
-  const wantsToOpen = Math.random() < 0.75;
+  const nextBid = g.currentBid + 1 + Math.floor(Math.random()*3);
+  const wantsToOpen = Math.random() < 0.92;
 
   if(g.currentBidder === null){
     if(wantsToOpen && nextBid <= Math.min(budget, maxWillingness)){
@@ -668,7 +667,6 @@ function aiActPractice(){
       localPass("opp");
     }
   } else if(g.currentBidder === "opp"){
-    // shouldn't be AI's turn while AI itself is the standing bidder
     return;
   } else {
     if(nextBid <= Math.min(budget, maxWillingness) && nextBid <= budget){
