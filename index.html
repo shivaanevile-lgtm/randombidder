@@ -20,131 +20,53 @@
     --serif: Georgia, 'Iowan Old Style', serif;
   }
   *{box-sizing:border-box;}
-  body{
-    margin:0;
-    background:var(--paper);
-    color:var(--ink);
-    font-family:var(--serif);
-    min-height:100vh;
-    padding:28px 16px 60px;
-  }
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);min-height:100vh;padding:28px 16px 60px;}
   .wrap{max-width:760px;margin:0 auto;}
-
-  .eyebrow{
-    font-family:var(--sans);
-    font-size:12px;
-    letter-spacing:1.5px;
-    color:var(--ink-soft);
-    text-transform:uppercase;
-    margin-bottom:10px;
-  }
-  h1{
-    font-size:clamp(30px,5.5vw,42px);
-    margin:0 0 6px;
-    letter-spacing:-0.3px;
-    line-height:1.05;
-    font-weight:400;
-  }
-  .sub{
-    font-family:var(--sans);
-    color:var(--ink-soft);
-    font-size:15px;
-    margin-bottom:26px;
-    line-height:1.5;
-  }
-
-  .card{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:22px;
-    padding:26px 28px;
-    margin-bottom:18px;
-  }
-
-  label{
-    display:block;
-    font-family:var(--sans);
-    font-size:12px;
-    letter-spacing:0.8px;
-    text-transform:uppercase;
-    color:var(--ink-soft);
-    margin-bottom:12px;
-  }
-  input[type=text], input[type=number]{
-    width:100%;
-    padding:12px 14px;
-    font-size:16px;
-    border:1px solid var(--line);
-    border-radius:12px;
-    background:#fff;
-    font-family:var(--sans);
-    margin-bottom:14px;
-  }
+  .eyebrow{font-family:var(--sans);font-size:12px;letter-spacing:1.5px;color:var(--ink-soft);text-transform:uppercase;margin-bottom:10px;}
+  h1{font-size:clamp(30px,5.5vw,42px);margin:0 0 6px;letter-spacing:-0.3px;line-height:1.05;font-weight:400;}
+  .sub{font-family:var(--sans);color:var(--ink-soft);font-size:15px;margin-bottom:26px;line-height:1.5;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:26px 28px;margin-bottom:18px;}
+  label{display:block;font-family:var(--sans);font-size:12px;letter-spacing:0.8px;text-transform:uppercase;color:var(--ink-soft);margin-bottom:12px;}
+  input[type=text], input[type=number]{width:100%;padding:12px 14px;font-size:16px;border:1px solid var(--line);border-radius:12px;background:#fff;font-family:var(--sans);margin-bottom:14px;}
   input[type=number]{font-family:var(--mono);font-weight:700;font-size:20px;}
   .row{display:flex;gap:10px;flex-wrap:wrap;}
-  .chip{
-    font-family:var(--sans);
-    font-size:14px;
-    padding:10px 18px;
-    border:1px solid var(--line);
-    border-radius:30px;
-    background:#fff;
-    cursor:pointer;
-    color:var(--ink);
-    transition:all .15s;
-  }
+  .chip{font-family:var(--sans);font-size:14px;padding:10px 18px;border:1px solid var(--line);border-radius:30px;background:#fff;cursor:pointer;color:var(--ink);transition:all .15s;}
   .chip:hover{border-color:var(--rust);color:var(--rust);}
   .chip.active{background:var(--rust);border-color:var(--rust);color:#fff;font-weight:600;}
-
-  .btn{
-    font-family:var(--sans);
-    font-size:16px;
-    font-weight:600;
-    padding:14px 22px;
-    border-radius:14px;
-    border:none;
-    cursor:pointer;
-    background:var(--rust);
-    color:#fff;
-    transition:transform .1s, background .15s;
-  }
+  .btn{font-family:var(--sans);font-size:16px;font-weight:600;padding:14px 22px;border-radius:14px;border:none;cursor:pointer;background:var(--rust);color:#fff;transition:transform .1s, background .15s;}
   .btn:hover{background:var(--rust-soft);transform:translateY(-1px);}
   .btn:active{transform:translateY(0);}
   .btn:disabled{opacity:0.35;cursor:not-allowed;transform:none;}
   .btn.secondary{background:transparent;border:1px solid var(--line);color:var(--ink);}
   .btn.secondary:hover{border-color:var(--rust);color:var(--rust);background:transparent;}
+  .btn.pass{background:transparent;border:1px solid var(--rust);color:var(--rust);}
+  .btn.pass:hover{background:rgba(193,84,60,0.08);}
   .btn.wide{width:100%;text-align:center;margin-top:4px;}
-
   .mode-card{cursor:pointer;transition:border-color .15s;border:1.5px solid var(--line);}
   .mode-card:hover{border-color:var(--rust);}
   .mode-card h3{margin:0 0 4px;font-size:20px;font-weight:400;font-family:var(--serif);}
   .mode-card p{margin:0;font-family:var(--sans);font-size:13.5px;color:var(--ink-soft);line-height:1.5;}
-
   .code-display{font-family:var(--mono);font-size:40px;font-weight:700;letter-spacing:6px;color:var(--rust);text-align:center;padding:18px 0;}
   .error-msg{font-family:var(--sans);font-size:13.5px;color:var(--rust);background:rgba(193,84,60,0.08);border-radius:10px;padding:10px 14px;margin-bottom:12px;}
-
-  .lot-card{text-align:center;padding:38px 28px;}
-  .lot-name{font-family:var(--serif);font-size:32px;margin:6px 0 22px;}
+  .lot-card{text-align:center;padding:34px 28px;}
+  .lot-name{font-family:var(--serif);font-size:30px;margin:6px 0 18px;}
   .lot-meta{font-family:var(--sans);font-size:12px;color:var(--ink-soft);letter-spacing:0.6px;text-transform:uppercase;margin-bottom:4px;}
-
-  .bid-row{display:flex;gap:10px;align-items:stretch;max-width:320px;margin:0 auto;}
-  .bid-row input{margin-bottom:0;flex:1;text-align:center;}
-
-  .waiting{font-family:var(--sans);color:var(--ink-soft);font-style:italic;font-size:14px;margin-top:14px;}
+  .bid-status{font-family:var(--mono);font-size:15px;color:var(--ink-soft);margin-bottom:22px;}
+  .bid-status .amt{font-size:26px;font-weight:700;color:var(--rust);}
+  .bid-status .who{font-family:var(--sans);font-size:12px;color:var(--ink-soft);}
+  .turn-flag{font-family:var(--sans);font-size:13px;font-weight:600;color:var(--sage);margin-bottom:14px;}
+  .turn-flag.waiting{color:var(--ink-soft);font-weight:400;font-style:italic;}
+  .raise-row{display:flex;gap:10px;align-items:stretch;max-width:320px;margin:0 auto 12px;}
+  .raise-row input{margin-bottom:0;flex:1;text-align:center;}
+  .action-row{display:flex;gap:10px;justify-content:center;max-width:320px;margin:0 auto;}
+  .action-row .btn{flex:1;}
+  .waiting{font-family:var(--sans);color:var(--ink-soft);font-style:italic;font-size:14px;margin-top:8px;}
   .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--line);}
   .dot.on{background:var(--sage);}
-
-  .reveal-row{display:flex;justify-content:center;gap:36px;margin:20px 0 6px;font-family:var(--mono);}
-  .reveal-col{text-align:center;}
-  .reveal-col .name{font-family:var(--sans);font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;}
-  .reveal-col .amt{font-size:30px;font-weight:700;}
-  .reveal-col.winner .amt{color:var(--sage);}
-  .reveal-col.loser .amt{color:var(--ink-soft);}
-  .reveal-tag{font-family:var(--sans);font-size:13px;margin-top:14px;color:var(--ink-soft);}
-
+  .reveal-tag{font-family:var(--sans);font-size:16px;margin-top:6px;color:var(--ink);font-weight:600;}
+  .reveal-price{font-family:var(--mono);font-size:34px;font-weight:700;color:var(--sage);margin-top:8px;}
   .squad-progress{font-family:var(--sans);font-size:12.5px;color:var(--ink-soft);text-align:center;margin-bottom:14px;letter-spacing:0.2px;}
   .squad-progress b{color:var(--ink);}
-
   .stalls{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
   @media(max-width:640px){.stalls{grid-template-columns:1fr;}}
   .stall{padding:20px 22px;}
@@ -161,14 +83,11 @@
   .cart li.freebie span:first-child{color:var(--sage);font-style:italic;}
   .cart li.freebie span:last-child{color:var(--sage);}
   .cart .empty{color:var(--ink-soft);font-style:italic;font-size:13px;font-family:var(--sans);}
-
   .progress-label{font-family:var(--mono);font-size:13px;color:var(--ink-soft);text-align:center;margin-bottom:10px;}
-
   .verdict{font-family:var(--sans);line-height:1.6;font-size:15px;margin-top:8px;color:var(--ink);white-space:pre-wrap;}
   .loading{font-family:var(--sans);color:var(--ink-soft);font-style:italic;font-size:14px;}
   .winner-badge{display:inline-block;background:var(--sage);color:#fff;font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:0.4px;padding:4px 12px;border-radius:20px;margin-left:10px;vertical-align:middle;}
   .results-title{font-family:var(--serif);font-size:26px;font-weight:400;margin:0 0 4px;}
-  footer{text-align:center;color:var(--ink-soft);font-family:var(--sans);font-size:12px;margin-top:36px;}
 </style>
 </head>
 <body>
@@ -203,7 +122,7 @@ const FOOTBALL_THEME = {
 let state = {
   screen: "setup",
   theme: null,
-  themeType: null,   // "open" | "slotted"
+  themeType: null,
   pool: [],
   customText: "",
   loadingCustom: false,
@@ -225,6 +144,7 @@ let state = {
 };
 
 let pollTimer = null;
+let aiTimer = null;
 
 function render(){
   const app = document.getElementById("app");
@@ -240,9 +160,9 @@ function render(){
 
 function renderSetup(){
   return `
-    <div class="eyebrow">A live auction draft for two</div>
+    <div class="eyebrow">A live ascending auction for two</div>
     <h1>Build Your Best ___</h1>
-    <div class="sub">$20 each. Lots come up one at a time — bid blind, highest bid wins. Fall short and you get handed the leftovers.</div>
+    <div class="sub">$20 each. Lots come up one at a time — raise or pass, back and forth, until one of you stops. Fall short of a full build and you get handed the leftovers.</div>
 
     <div class="card">
       <label>Pick a theme</label>
@@ -262,7 +182,7 @@ function renderSetup(){
 
     <div class="card mode-card" data-connect="create">
       <h3>Play online</h3>
-      <p>Create a room, share the code with a friend on their own device, and bid it out live.</p>
+      <p>Create a room, share the code with a friend on their own device, and auction it out live.</p>
     </div>
     <div class="card mode-card" data-connect="join">
       <h3>Join a room</h3>
@@ -270,7 +190,7 @@ function renderSetup(){
     </div>
     <div class="card mode-card" data-connect="practice">
       <h3>Practice vs AI</h3>
-      <p>No code needed — bid against an AI opponent right here, right now.</p>
+      <p>No code needed — go back and forth with an AI opponent right here, right now.</p>
     </div>
   `;
 }
@@ -284,9 +204,7 @@ function renderConnect(){
     <div class="eyebrow">${state.connectMode==="join" ? "Join a room" : state.connectMode==="create" ? "Create a room" : "Practice vs AI"}</div>
     <h1>${state.connectMode==="join" ? "Enter the code" : "Ready to go"}</h1>
     <div class="sub">${state.connectMode==="join" ? "Ask your opponent for their 5-character room code." : "Theme: " + (themeLabel || "none picked yet")}</div>
-
     ${state.errorMsg ? `<div class="error-msg">${state.errorMsg}</div>` : ""}
-
     <div class="card">
       ${state.connectMode==="join" ? `
         <label>Room code</label>
@@ -296,7 +214,6 @@ function renderConnect(){
         ${state.connecting ? "Connecting..." : state.connectMode==="join" ? "Join room" : state.connectMode==="create" ? "Create room" : "Start practice round"}
       </button>
     </div>
-
     <button class="btn secondary wide" id="back-btn">Back</button>
   `;
 }
@@ -332,32 +249,24 @@ function renderAuction(){
 
   if(state.revealing){
     const r = state.revealing;
-    const myBid = r.myBid;
-    const oppBid = r.oppBid;
     const iWon = r.winner === "me";
     const oppWon = r.winner === "opp";
     return `
       <div class="eyebrow">${g.theme}${isSlotted && r.categoryLabel ? " · " + r.categoryLabel : ""}</div>
-      <h1>Sold?</h1>
+      <h1>${r.winner ? "Sold" : "Passed"}</h1>
       <div class="card lot-card">
         <div class="lot-name">${r.item}</div>
-        <div class="reveal-row">
-          <div class="reveal-col ${iWon?'winner':oppWon?'loser':''}">
-            <div class="name">You</div>
-            <div class="amt">${myBid===null?'—':'$'+myBid}</div>
-          </div>
-          <div class="reveal-col ${oppWon?'winner':iWon?'loser':''}">
-            <div class="name">${g.opponent ? g.opponent.name : 'AI'}</div>
-            <div class="amt">${oppBid===null?'—':'$'+oppBid}</div>
-          </div>
-        </div>
-        <div class="reveal-tag">${r.winner ? (iWon ? "You win the lot." : "They win the lot.") : "Nobody claims it."}</div>
+        ${r.winner ? `
+          <div class="reveal-tag">${iWon ? "You win it" : "They win it"}</div>
+          <div class="reveal-price">$${r.price}</div>
+        ` : `<div class="reveal-tag">Nobody wanted it enough.</div>`}
       </div>
     `;
   }
 
   const meEligible = isSlotted ? g.meEligible : true;
-  const submitted = g.me.submitted;
+  const myTurn = g.turn === "me" && meEligible;
+  const noBidYet = g.currentBidder === null;
 
   return `
     <div class="eyebrow">${g.theme}</div>
@@ -371,22 +280,30 @@ function renderAuction(){
       <div class="lot-meta">${isSlotted ? "Bidding for: " + (g.currentCategoryLabel || "") : "Up for bid"}</div>
       <div class="lot-name">${g.currentItem || "—"}</div>
 
+      <div class="bid-status">
+        ${noBidYet ? "No bids yet" : `<span class="amt">$${g.currentBid}</span> <span class="who">— currently held by ${g.currentBidder==='me'?'you':(g.opponent?g.opponent.name:'AI')}</span>`}
+      </div>
+
       ${!meEligible ? `
         <div class="waiting"><span class="dot on"></span>You've already filled this spot — waiting on ${g.opponent ? g.opponent.name : 'the AI'}...</div>
-      ` : submitted ? `
-        <div class="waiting"><span class="dot on"></span>Bid locked in — waiting on ${g.opponent ? g.opponent.name : 'the AI'}...</div>
-      ` : `
-        <div class="bid-row">
-          <input type="number" id="bid-input" min="0" max="${g.me.budget}" placeholder="0" value="${state.bidValue}">
-          <button class="btn" id="submit-bid">Bid</button>
+      ` : myTurn ? `
+        <div class="turn-flag">Your move</div>
+        <div class="raise-row">
+          <input type="number" id="bid-input" min="${g.currentBid+1}" max="${g.me.budget}" placeholder="${g.currentBid+1}" value="${state.bidValue}">
         </div>
-        <div class="waiting">You have $${g.me.budget} left. Bid $0 to pass on this one.</div>
+        <div class="action-row">
+          <button class="btn" id="raise-btn">Raise</button>
+          <button class="btn pass" id="pass-btn">${noBidYet ? "Skip it" : "Let it go"}</button>
+        </div>
+        <div class="waiting">You have $${g.me.budget} left.</div>
+      ` : `
+        <div class="turn-flag waiting"><span class="dot on"></span>Waiting for ${g.opponent ? g.opponent.name : 'the AI'} to respond...</div>
       `}
     </div>
 
     <div class="stalls">
-      ${renderStall(g.me, "You", isSlotted)}
-      ${renderStall(g.opponent || {name:'AI',budget:20,items:[]}, g.opponent ? g.opponent.name : "AI", isSlotted)}
+      ${renderStall(g.me, "You")}
+      ${renderStall(g.opponent || {name:'AI',budget:20,items:[]}, g.opponent ? g.opponent.name : "AI")}
     </div>
   `;
 }
@@ -416,19 +333,16 @@ function renderResults(){
     <div class="eyebrow">${g.theme}</div>
     <h1>The reveal</h1>
     <div class="sub">Here's what you and ${oppLabel} walked away with.</div>
-
     <div class="stalls">
       ${renderStall(g.me, "You")}
       ${renderStall(g.opponent || {name:'AI',budget:20,items:[]}, oppLabel)}
     </div>
-
     <div class="card">
       <div class="results-title">Judgment ${state.winner?`<span class="winner-badge">${state.winner} wins</span>`:''}</div>
       ${state.loadingVerdict ? `<div class="loading">The judge is deliberating...</div>` : ""}
       ${state.verdict ? `<div class="verdict">${state.verdict}</div>` : ""}
       ${!state.verdict && !state.loadingVerdict ? `<button class="btn" id="judge-btn" style="margin-top:8px;">Judge the builds</button>` : ""}
     </div>
-
     <button class="btn secondary wide" id="restart-btn">Build something else</button>
   `;
 }
@@ -440,16 +354,9 @@ function attachHandlers(){
     el.onclick = ()=>{
       const t = el.dataset.theme;
       state.theme = t;
-      if(t==="__custom__"){
-        state.pool = [];
-        state.themeType = "open";
-      } else if(t==="__football__"){
-        state.pool = [];
-        state.themeType = "slotted";
-      } else {
-        state.pool = [...OPEN_THEMES[t]];
-        state.themeType = "open";
-      }
+      if(t==="__custom__"){ state.pool = []; state.themeType = "open"; }
+      else if(t==="__football__"){ state.pool = []; state.themeType = "slotted"; }
+      else { state.pool = [...OPEN_THEMES[t]]; state.themeType = "open"; }
       render();
     };
   });
@@ -493,8 +400,11 @@ function attachHandlers(){
   const bidInput = document.getElementById("bid-input");
   if(bidInput) bidInput.oninput = (e)=>{ state.bidValue = e.target.value; };
 
-  const submitBid = document.getElementById("submit-bid");
-  if(submitBid) submitBid.onclick = handleSubmitBid;
+  const raiseBtn = document.getElementById("raise-btn");
+  if(raiseBtn) raiseBtn.onclick = handleRaise;
+
+  const passBtn = document.getElementById("pass-btn");
+  if(passBtn) passBtn.onclick = handlePass;
 
   const judgeBtn = document.getElementById("judge-btn");
   if(judgeBtn) judgeBtn.onclick = judgeBuilds;
@@ -502,6 +412,7 @@ function attachHandlers(){
   const restartBtn = document.getElementById("restart-btn");
   if(restartBtn) restartBtn.onclick = ()=>{
     stopPolling();
+    if(aiTimer){ clearTimeout(aiTimer); aiTimer=null; }
     state = {screen:"setup", theme:null, themeType:null, pool:[], customText:"", loadingCustom:false,
       connectMode:null, joinCode:"", errorMsg:null, connecting:false,
       roomCode:null, token:null, role:null, game:null, revealing:null, bidValue:"",
@@ -529,9 +440,7 @@ async function handleGo(){
       const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
       const data = await res.json();
       if(data.error) throw new Error(data.error);
-      state.roomCode = data.code;
-      state.token = data.token;
-      state.role = data.role;
+      state.roomCode = data.code; state.token = data.token; state.role = data.role;
       state.connecting = false;
       state.game = { theme: themeName };
       state.screen = "room-wait";
@@ -546,19 +455,13 @@ async function handleGo(){
   }
 
   if(state.connectMode === "join"){
-    if(state.joinCode.length < 5){
-      state.errorMsg = "Enter the full 5-character code.";
-      render();
-      return;
-    }
+    if(state.joinCode.length < 5){ state.errorMsg = "Enter the full 5-character code."; render(); return; }
     state.connecting = true; render();
     try{
       const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ action:"join", code: state.joinCode }) });
       const data = await res.json();
       if(data.error) throw new Error(data.error);
-      state.roomCode = data.code;
-      state.token = data.token;
-      state.role = data.role;
+      state.roomCode = data.code; state.token = data.token; state.role = data.role;
       state.connecting = false;
       state.screen = "auction";
       render();
@@ -573,11 +476,7 @@ async function handleGo(){
 
 // ---------- ONLINE POLLING ----------
 
-function startPolling(){
-  stopPolling();
-  pollOnce();
-  pollTimer = setInterval(pollOnce, 1200);
-}
+function startPolling(){ stopPolling(); pollOnce(); pollTimer = setInterval(pollOnce, 1000); }
 function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer = null; } }
 
 async function pollOnce(){
@@ -597,12 +496,12 @@ function applyServerState(data){
     theme: data.theme, themeType: data.themeType, phase: data.phase,
     lotIndex: data.lotIndex, totalLots: data.totalLots,
     currentItem: data.currentItem, currentCategoryLabel: data.currentCategoryLabel,
-    meEligible: data.meEligible, resolved: data.resolved,
+    meEligible: data.meEligible, currentBid: data.currentBid, currentBidder: data.currentBidder, turn: data.turn,
+    resolved: data.resolved,
     me: data.me, opponent: data.opponent,
     categories: data.themeType==="slotted" ? FOOTBALL_THEME.categories : null
   };
   if(data.themeType==="slotted" && data.me){
-    // derive filled counts from items for progress display
     const filled = {};
     FOOTBALL_THEME.categories.forEach(c=>{ filled[c.cat]=0; });
     data.me.items.forEach(it=>{ if(it.cat) filled[it.cat] = (filled[it.cat]||0)+1; });
@@ -616,13 +515,10 @@ function applyServerState(data){
     if(newKey && newKey !== prevKey && !state.revealing){
       const r = data.resolved;
       state.revealing = {
-        item: r.item,
-        categoryLabel: r.categoryLabel,
-        myBid: state.role==="p1" ? (r.eligibleP1===false ? null : r.p1Bid) : (r.eligibleP2===false ? null : r.p2Bid),
-        oppBid: state.role==="p1" ? (r.eligibleP2===false ? null : r.p2Bid) : (r.eligibleP1===false ? null : r.p1Bid),
+        item: r.item, categoryLabel: r.categoryLabel, price: r.price,
         winner: r.winner === state.role ? "me" : (r.winner ? "opp" : null)
       };
-      setTimeout(()=>{ state.revealing = null; render(); }, 2400);
+      setTimeout(()=>{ state.revealing = null; render(); }, 1900);
     }
     state.bidValue = "";
   } else if(data.phase === "results"){
@@ -631,109 +527,184 @@ function applyServerState(data){
   render();
 }
 
-async function handleSubmitBid(){
+async function handleRaise(){
   const g = state.game;
-  const amt = Math.max(0, Math.min(g.me.budget, Math.floor(Number(state.bidValue) || 0)));
+  const amt = Math.floor(Number(state.bidValue) || (g.currentBid+1));
+  if(amt <= g.currentBid || amt > g.me.budget) return;
 
-  if(state.connectMode === "practice"){
-    if(g.themeType === "slotted") submitSlottedBid(amt);
-    else submitPracticeBid(amt);
-    return;
-  }
+  if(state.connectMode === "practice"){ localRaise("me", amt); return; }
 
   try{
-    const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ action:"bid", code: state.roomCode, token: state.token, amount: amt }) });
+    const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ action:"raise", code: state.roomCode, token: state.token, amount: amt }) });
     const data = await res.json();
     if(data.error) return;
     applyServerState(data);
   }catch(e){ /* retry on next poll */ }
 }
 
-// ---------- PRACTICE: OPEN THEMES ----------
+async function handlePass(){
+  if(state.connectMode === "practice"){ localPass("me"); return; }
+  try{
+    const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ action:"pass", code: state.roomCode, token: state.token }) });
+    const data = await res.json();
+    if(data.error) return;
+    applyServerState(data);
+  }catch(e){ /* retry on next poll */ }
+}
+
+// ---------- PRACTICE: shared ascending-auction engine ----------
 
 function shuffleArr(arr){
   const a = [...arr];
-  for(let i=a.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1));
-    [a[i],a[j]] = [a[j],a[i]];
-  }
+  for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; }
   return a;
 }
+function otherRole(r){ return r==="me" ? "opp" : "me"; }
+
+function startTurnAuctionLocal(){
+  const g = state.game;
+  g.currentBid = 0; g.currentBidder = null; g.openPasses = 0; g.turn = g.nextStarter;
+  state.bidValue = "";
+  if(g.turn === "opp") scheduleAi();
+}
+
+function scheduleAi(){
+  if(aiTimer) clearTimeout(aiTimer);
+  aiTimer = setTimeout(aiActPractice, 850);
+}
+
+function localRaise(role, amt){
+  const g = state.game;
+  g.currentBid = amt;
+  g.currentBidder = role;
+  g.openPasses = 0;
+  g.turn = otherRole(role);
+  render();
+  if(g.turn === "opp") scheduleAi();
+}
+
+function localPass(role){
+  const g = state.game;
+  if(g.currentBidder === null){
+    g.openPasses += 1;
+    if(g.openPasses >= 2){
+      finishLotLocal(null);
+      return;
+    } else {
+      g.turn = otherRole(role);
+      render();
+      if(g.turn === "opp") scheduleAi();
+    }
+  } else {
+    finishLotLocal(g.currentBidder);
+  }
+}
+
+function finishLotLocal(winnerOrNull){
+  const g = state.game;
+  if(g.themeType === "slotted"){
+    const item = g.currentItem, cat = g.currentCategory, categoryLabel = g.currentCategoryLabel, price = g.currentBid;
+    if(winnerOrNull){
+      const w = winnerOrNull==="me" ? g.me : g.opponent;
+      w.budget -= price;
+      w.items.push({ n:item, p:price, freebie:false, cat });
+      w.filled[cat] += 1;
+    }
+    state.revealing = { item, price, winner: winnerOrNull, categoryLabel };
+    g.nextStarter = otherRole(g.nextStarter);
+    setTimeout(()=>{ state.revealing=null; drawSlottedLotLocal(); render(); }, 1900);
+  } else {
+    const item = g.currentItem, price = g.currentBid;
+    if(winnerOrNull){
+      const w = winnerOrNull==="me" ? g.me : g.opponent;
+      w.budget -= price;
+      w.items.push({ n:item, p:price, freebie:false });
+    } else {
+      state._unsold.push(item);
+    }
+    state.revealing = { item, price, winner: winnerOrNull, categoryLabel:null };
+    g.lotIndex += 1;
+    g.nextStarter = otherRole(g.nextStarter);
+    setTimeout(()=>{
+      state.revealing=null;
+      if(g.lotIndex >= g.totalLots){ applyPracticeLeftoversOpen(); state.screen="results"; }
+      else { g.currentItem = state._lots[g.lotIndex]; startTurnAuctionLocal(); }
+      render();
+    }, 1900);
+  }
+  render();
+}
+
+function totalRemainingNeededLocal(player, categories, catIndex){
+  let total = 0;
+  for(let i=catIndex; i<categories.length; i++){
+    const c = categories[i];
+    total += Math.max(0, c.count - (player.filled ? (player.filled[c.cat]||0) : 0));
+  }
+  return Math.max(1, total);
+}
+
+function aiActPractice(){
+  const g = state.game;
+  if(!g || g.turn !== "opp") return;
+  const budget = g.opponent.budget;
+
+  let maxWillingness;
+  if(g.themeType === "slotted"){
+    const needed = totalRemainingNeededLocal(g.opponent, g.categories, g.catIndex);
+    maxWillingness = budget / needed * (1.1 + Math.random()*0.6);
+  } else {
+    const owned = g.opponent.items.length;
+    const lotsLeft = g.totalLots - g.lotIndex;
+    const stillNeeded = Math.max(1, 5 - owned);
+    maxWillingness = (budget / Math.max(1, Math.min(lotsLeft, stillNeeded))) * (0.9 + Math.random()*0.7);
+  }
+
+  const nextBid = g.currentBid + 1 + Math.floor(Math.random()*2);
+  const wantsToOpen = Math.random() < 0.75;
+
+  if(g.currentBidder === null){
+    if(wantsToOpen && nextBid <= Math.min(budget, maxWillingness)){
+      localRaise("opp", Math.min(budget, nextBid));
+    } else {
+      localPass("opp");
+    }
+  } else if(g.currentBidder === "opp"){
+    // shouldn't be AI's turn while AI itself is the standing bidder
+    return;
+  } else {
+    if(nextBid <= Math.min(budget, maxWillingness) && nextBid <= budget){
+      localRaise("opp", nextBid);
+    } else {
+      localPass("opp");
+    }
+  }
+}
+
+// ---------- PRACTICE: OPEN THEMES ----------
 
 function startPracticeOpen(){
   const lots = shuffleArr(state.pool).slice(0, 10);
   state.game = {
     theme: state.theme==="__custom__" ? state.customText : state.theme,
     themeType: "open", phase: "auction",
-    lotIndex: 0, totalLots: lots.length, currentItem: lots[0], resolved: null,
-    me: { budget: 20, items: [], submitted: false },
-    opponent: { name: "AI", budget: 20, items: [], submitted: false }
+    lotIndex: 0, totalLots: lots.length, currentItem: lots[0],
+    currentBid:0, currentBidder:null, turn:"me", openPasses:0, nextStarter:"me",
+    resolved: null,
+    me: { budget: 20, items: [] },
+    opponent: { name: "AI", budget: 20, items: [] }
   };
   state._lots = lots;
   state._unsold = [];
   state.screen = "auction";
-  state.bidValue = "";
-  render();
-}
-
-function aiBidAmountOpen(){
-  const g = state.game;
-  const budget = g.opponent.budget;
-  const owned = g.opponent.items.length;
-  const lotsLeft = g.totalLots - g.lotIndex;
-  const stillNeeded = Math.max(0, 5 - owned);
-
-  if(stillNeeded > 0 && lotsLeft <= stillNeeded){
-    return Math.min(budget, 1 + Math.floor(Math.random()*2));
-  }
-  if(Math.random() < 0.18) return 0;
-  const reserve = Math.max(0, stillNeeded - 1);
-  const spendable = Math.max(0, budget - reserve);
-  return Math.min(spendable, Math.floor(Math.random() * 7));
-}
-
-function submitPracticeBid(myBid){
-  const g = state.game;
-  const aiBid = aiBidAmountOpen();
-  const item = g.currentItem;
-
-  let winner = null;
-  if(myBid > aiBid) winner = "me";
-  else if(aiBid > myBid) winner = "opp";
-
-  if(winner === "me"){
-    g.me.budget -= myBid;
-    g.me.items.push({ n:item, p:myBid, freebie:false });
-  } else if(winner === "opp"){
-    g.opponent.budget -= aiBid;
-    g.opponent.items.push({ n:item, p:aiBid, freebie:false });
-  } else {
-    state._unsold.push(item);
-  }
-
-  state.revealing = { item, myBid, oppBid: aiBid, winner };
-  g.lotIndex += 1;
-
-  setTimeout(()=>{
-    state.revealing = null;
-    if(g.lotIndex >= g.totalLots){
-      applyPracticeLeftoversOpen();
-      state.screen = "results";
-    } else {
-      g.currentItem = state._lots[g.lotIndex];
-      g.me.submitted = false;
-      g.opponent.submitted = false;
-      state.bidValue = "";
-    }
-    render();
-  }, 2400);
+  startTurnAuctionLocal();
   render();
 }
 
 function applyPracticeLeftoversOpen(){
   const g = state.game;
-  [["me","opponent"],["opponent","me"]].forEach(([key,other])=>{
-    if(g[key].items.length < 5 && g[other].items.length >= 5){
+  [["me","opponent"],["opponent","me"]].forEach(([key,otherKey])=>{
+    if(g[key].items.length < 5 && g[otherKey].items.length >= 5){
       state._unsold.sort(()=>Math.random()-0.5);
       while(g[key].items.length < 5 && state._unsold.length){
         const it = state._unsold.shift();
@@ -753,34 +724,24 @@ function startPracticeSlotted(){
   state.game = {
     theme: FOOTBALL_THEME.label, themeType: "slotted",
     categories: cats, catIndex: 0, pools,
-    currentItem: null, currentCategoryLabel: null, meEligible: true, resolved: null,
-    me: { budget:20, items:[], submitted:false, filled:{GK:0,DEF:0,MID:0,ATT:0} },
-    opponent: { name:"AI", budget:20, items:[], submitted:false, filled:{GK:0,DEF:0,MID:0,ATT:0} }
+    currentItem: null, currentCategory:null, currentCategoryLabel: null, meEligible: true,
+    currentBid:0, currentBidder:null, turn:"me", openPasses:0, nextStarter:"me",
+    resolved: null,
+    me: { budget:20, items:[], filled:{GK:0,DEF:0,MID:0,ATT:0} },
+    opponent: { name:"AI", budget:20, items:[], filled:{GK:0,DEF:0,MID:0,ATT:0} }
   };
   state.screen = "auction";
-  state.bidValue = "";
-  drawNextSlottedLot();
+  drawSlottedLotLocal();
   render();
 }
 
-function currentCatInfo(){
+function drawSlottedLotLocal(){
   const g = state.game;
-  return g.categories[g.catIndex];
-}
-
-function advanceCategoryIfNeeded(){
-  const g = state.game;
-  let info = currentCatInfo();
+  let info = g.categories[g.catIndex];
   while(info && g.me.filled[info.cat] >= info.count && g.opponent.filled[info.cat] >= info.count){
     g.catIndex += 1;
-    info = currentCatInfo();
+    info = g.categories[g.catIndex];
   }
-  return info;
-}
-
-function drawNextSlottedLot(){
-  const g = state.game;
-  const info = advanceCategoryIfNeeded();
   if(!info){
     applyPracticeLeftoversSlotted();
     state.screen = "results";
@@ -788,92 +749,34 @@ function drawNextSlottedLot(){
   }
   const meNeeds = g.me.filled[info.cat] < info.count;
   const oppNeeds = g.opponent.filled[info.cat] < info.count;
-  g.meEligible = meNeeds;
-  g.eligibleOpp = oppNeeds;
   g.currentCategory = info.cat;
   g.currentCategoryLabel = info.label;
-
   const pool = g.pools[info.cat];
   g.currentItem = pool.length ? pool.shift() : "Free agent " + info.label.toLowerCase();
-  g.me.submitted = false;
-  g.opponent.submitted = false;
-  state.bidValue = "";
+  g.meEligible = meNeeds;
+  g.eligibleOpp = oppNeeds;
 
-  if(!meNeeds && oppNeeds){
-    // I'm out of this lot; resolve immediately against the AI alone
-    submitSlottedBid(0);
+  if(meNeeds && oppNeeds){
+    startTurnAuctionLocal();
+  } else {
+    const soloKey = meNeeds ? "me" : "opp";
+    const solo = soloKey==="me" ? g.me : g.opponent;
+    const price = solo.budget > 0 ? 1 : 0;
+    solo.budget -= price;
+    solo.items.push({ n:g.currentItem, p:price, freebie:price===0, cat:info.cat });
+    solo.filled[info.cat] += 1;
+    state.revealing = { item:g.currentItem, price, winner:soloKey, categoryLabel:info.label };
+    setTimeout(()=>{ state.revealing=null; drawSlottedLotLocal(); render(); }, 1900);
   }
-}
-
-function totalRemainingNeeded(player){
-  const g = state.game;
-  let total = 0;
-  for(let i=g.catIndex; i<g.categories.length; i++){
-    const c = g.categories[i];
-    total += Math.max(0, c.count - (player.filled[c.cat]||0));
-  }
-  return Math.max(1, total);
-}
-
-function aiSlottedBidAmount(){
-  const g = state.game;
-  if(!g.eligibleOpp) return 0;
-  const budget = g.opponent.budget;
-  const needed = totalRemainingNeeded(g.opponent);
-  const perSlot = budget / needed;
-  const base = Math.max(1, Math.round(perSlot * (0.5 + Math.random())));
-  return Math.min(budget, base);
-}
-
-function submitSlottedBid(myBidRaw){
-  const g = state.game;
-  const item = g.currentItem;
-  const cat = g.currentCategory;
-  const catLabel = g.currentCategoryLabel;
-  const myBid = g.meEligible ? myBidRaw : 0;
-  const aiBid = aiSlottedBidAmount();
-
-  let winner = null;
-  if(g.meEligible && g.eligibleOpp){
-    if(myBid > aiBid) winner = "me"; else if(aiBid > myBid) winner = "opp";
-  } else if(g.meEligible && !g.eligibleOpp){
-    winner = myBid > 0 ? "me" : null;
-  } else if(!g.meEligible && g.eligibleOpp){
-    winner = aiBid > 0 ? "opp" : null;
-  }
-
-  if(winner === "me"){
-    g.me.budget -= myBid;
-    g.me.items.push({ n:item, p:myBid, freebie:false, cat });
-    g.me.filled[cat] += 1;
-  } else if(winner === "opp"){
-    g.opponent.budget -= aiBid;
-    g.opponent.items.push({ n:item, p:aiBid, freebie:false, cat });
-    g.opponent.filled[cat] += 1;
-  }
-
-  state.revealing = {
-    item, categoryLabel: catLabel,
-    myBid: g.meEligible ? myBid : null,
-    oppBid: g.eligibleOpp ? aiBid : null,
-    winner
-  };
-
-  setTimeout(()=>{
-    state.revealing = null;
-    drawNextSlottedLot();
-    render();
-  }, 2400);
-  render();
 }
 
 function applyPracticeLeftoversSlotted(){
   const g = state.game;
-  [["me","opponent"],["opponent","me"]].forEach(([key])=>{
+  [g.me, g.opponent].forEach(p=>{
     g.categories.forEach(info=>{
-      while(g[key].filled[info.cat] < info.count){
-        g[key].items.push({ n:"Free agent "+info.label.toLowerCase(), p:0, freebie:true, cat:info.cat });
-        g[key].filled[info.cat] += 1;
+      while(p.filled[info.cat] < info.count){
+        p.items.push({ n:"Free agent "+info.label.toLowerCase(), p:0, freebie:true, cat:info.cat });
+        p.filled[info.cat] += 1;
       }
     });
   });
@@ -885,11 +788,7 @@ async function callClaude(promptText){
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 700,
-      messages: [{role:"user", content: promptText}]
-    })
+    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 700, messages: [{role:"user", content: promptText}] })
   });
   const data = await response.json();
   return data.content.map(b=>b.text||"").join("\\n");
@@ -901,7 +800,7 @@ async function generateCustomTheme(){
   state.loadingCustom = true;
   render();
   try{
-    const prompt = `Generate a shopping list for a "build your best ${text}" auction party game. Return ONLY valid JSON, no markdown fences, no preamble: an array of 14 short item name strings (no prices — this is an auction, players bid whatever they want). Keep names under 5 words, playful and specific to the theme.`;
+    const prompt = `Generate a shopping list for a "build your best ${text}" auction party game. Return ONLY valid JSON, no markdown fences, no preamble: an array of 14 short, specific, concrete item name strings (not vague categories — think "infinite tacos" not "food area"). No prices needed. Keep names under 5 words, playful and specific to the theme.`;
     const raw = await callClaude(prompt);
     const clean = raw.replace(/\`\`\`json|\`\`\`/g, "").trim();
     const items = JSON.parse(clean);
