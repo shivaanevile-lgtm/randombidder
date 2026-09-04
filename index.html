@@ -1030,13 +1030,14 @@ function applyPracticeLeftoversSlotted(){
 // ---------- AI HELPERS (custom theme + judge) ----------
 
 async function callClaude(promptText){
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetch("/api/ai", {
     method: "POST",
     headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 700, messages: [{role:"user", content: promptText}] })
+    body: JSON.stringify({ prompt: promptText })
   });
   const data = await response.json();
-  return data.content.map(b=>b.text||"").join("\\n");
+  if(data.error) throw new Error(data.error);
+  return data.text || "";
 }
 
 async function generateCustomTheme(){
