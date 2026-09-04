@@ -180,9 +180,12 @@ function buildDraftPools(){
   const pools = {};
   Object.keys(FOOTBALL_THEME.pools).forEach(pos=>{
     const currents = FOOTBALL_THEME.pools[pos];
-    const icons = ICON_POOLS[pos] || [];
-    const guaranteedIcon = icons[Math.floor(Math.random()*icons.length)];
-    const rest = shuffleArr([...currents, ...icons.filter(n=>n!==guaranteedIcon)]);
+    const allIcons = ICON_POOLS[pos] || [];
+    // only sample a few icons into each draft (instead of all of them) so 9-10
+    // rated legends stay rarer than the 7-9 rated current pros
+    const sampledIcons = shuffleArr(allIcons).slice(0, 3);
+    const guaranteedIcon = sampledIcons[Math.floor(Math.random()*sampledIcons.length)];
+    const rest = shuffleArr([...currents, ...sampledIcons.filter(n=>n!==guaranteedIcon)]);
     pools[pos] = [guaranteedIcon, ...rest];
   });
   return pools;
@@ -231,6 +234,47 @@ let pollTimer = null;
 let aiTimer = null;
 
 try{ const saved = localStorage.getItem("byb_nickname"); if(saved) state.nickname = saved; }catch(e){ /* ignore */ }
+
+// ---------- session persistence (survives reloads/backgrounding) ----------
+
+const SESSION_KEY = "byb_session_v1";
+function saveSession(){
+  try{
+    if(state.roomCode && state.token && state.role){
+      localStorage.setItem(SESSION_KEY, JSON.stringify({
+        roomCode: state.roomCode, token: state.token, role: state.role, connectMode: state.connectMode
+      }));
+    }
+  }catch(e){ /* ignore */ }
+}
+function clearSession(){
+  try{ localStorage.removeItem(SESSION_KEY); }catch(e){ /* ignore */ }
+}
+function loadSession(){
+  try{
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+async function attemptResumeSession(){
+  const saved = loadSession();
+  if(!saved){ render(); return; }
+  state.roomCode = saved.roomCode;
+  state.token = saved.token;
+  state.role = saved.role;
+  state.connectMode = saved.connectMode;
+  try{
+    const res = await fetch(`/api/room?code=${saved.roomCode}&token=${saved.token}`);
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    if(saved.role === "host") applyHostServerState(data); else applyServerState(data);
+    startPolling();
+  }catch(e){
+    clearSession();
+    state.roomCode = null; state.token = null; state.role = null; state.connectMode = null;
+    render();
+  }
+}
 
 // ---------- AI preference memory (per-browser, practice mode only) ----------
 
@@ -783,7 +827,7 @@ function attachHandlers(){
   };
 
   const leaveBtn = document.getElementById("leave-btn");
-  if(leaveBtn) leaveBtn.onclick = ()=>{ stopPolling(); state.screen = "setup"; render(); };
+  if(leaveBtn) leaveBtn.onclick = ()=>{ stopPolling(); clearSession(); state.screen = "setup"; render(); };
 
   const bidInput = document.getElementById("bid-input");
   if(bidInput) bidInput.oninput = (e)=>{ state.bidValue = e.target.value; };
@@ -807,6 +851,7 @@ function attachHandlers(){
   if(restartBtn) restartBtn.onclick = ()=>{
     stopPolling();
     if(aiTimer){ clearTimeout(aiTimer); aiTimer=null; }
+    clearSession();
     const keepNickname = state.nickname;
     state = {screen:"setup", theme:null, themeType:null, pool:[], customText:"", loadingCustom:false,
       connectMode:null, joinCode:"", nickname:keepNickname, errorMsg:null, connecting:false,
@@ -837,6 +882,7 @@ async function handleGo(){
       const data = await res.json();
       if(data.error) throw new Error(data.error);
       state.roomCode = data.code; state.token = data.token; state.role = data.role;
+      saveSession();
       state.connecting = false;
       state.game = { theme: themeName };
       state.screen = "room-wait";
@@ -859,6 +905,7 @@ async function handleGo(){
       const data = await res.json();
       if(data.error) throw new Error(data.error);
       state.roomCode = data.code; state.token = data.token; state.role = data.role;
+      saveSession();
       state.connecting = false;
       state.game = { theme: themeName };
       state.screen = "room-wait";
@@ -880,6 +927,7 @@ async function handleGo(){
       const data = await res.json();
       if(data.error) throw new Error(data.error);
       state.roomCode = data.code; state.token = data.token; state.role = data.role;
+      saveSession();
       state.connecting = false;
       state.screen = "auction";
       render();
@@ -1534,7 +1582,7 @@ function judgeBuilds(){
   render();
 }
 
-render();
+attemptResumeSession();
 </script>
 </body>
 </html>
