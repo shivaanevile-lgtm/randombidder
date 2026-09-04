@@ -18,6 +18,7 @@ function shuffle(arr) {
   }
   return a;
 }
+function other(role) { return role === "p1" ? "p2" : "p1"; }
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json" } });
 }
@@ -27,7 +28,48 @@ function roleForToken(room, token) {
   return null;
 }
 
-function computeSlottedLot(room) {
+// ---------- lot lifecycle ----------
+
+function startTurnAuction(room) {
+  room.currentBid = 0;
+  room.currentBidder = null;
+  room.openPasses = 0;
+  room.turn = room.nextStarter;
+}
+
+function drawOpenLot(room) {
+  const p1Needs = room.players.p1.items.length < 5;
+  const p2Needs = room.players.p2.items.length < 5;
+  if (!p1Needs && !p2Needs) {
+    room.phase = "results";
+    room.currentItem = null;
+    return;
+  }
+
+  let item;
+  if (room.lotIndex < room.lots.length) {
+    item = room.lots[room.lotIndex];
+    room.lotIndex += 1;
+  } else if (room.unsold.length) {
+    item = room.unsold.shift();
+  } else {
+    item = "Bonus pick";
+  }
+  room.currentItem = item;
+
+  if (p1Needs && p2Needs) {
+    startTurnAuction(room);
+  } else {
+    // one player already has 5 — the other gets the rest for free, uncontested
+    const soloRole = p1Needs ? "p1" : "p2";
+    const solo = room.players[soloRole];
+    solo.items.push({ n: item, p: 0, freebie: true });
+    room.resolved = { item, price: 0, winner: soloRole, categoryLabel: null };
+    drawOpenLot(room);
+  }
+}
+
+function drawSlottedLot(room) {
   let info = room.categories[room.catIndex];
   while (info && room.players.p1.filled[info.cat] >= info.count && room.players.p2.filled[info.cat] >= info.count) {
     room.catIndex += 1;
@@ -46,16 +88,51 @@ function computeSlottedLot(room) {
 
   room.currentCategory = info.cat;
   room.currentCategoryLabel = info.label;
-
   const pool = room.pools[info.cat];
   room.currentItem = pool.length ? pool.shift() : "Free agent " + info.label.toLowerCase();
-
-  room.players.p1.bid = p1Needs ? null : 0;
-  room.players.p1.submitted = !p1Needs;
-  room.players.p2.bid = p2Needs ? null : 0;
-  room.players.p2.submitted = !p2Needs;
   room.eligibleP1 = p1Needs;
   room.eligibleP2 = p2Needs;
+
+  if (p1Needs && p2Needs) {
+    startTurnAuction(room);
+  } else {
+    // exactly one player still needs this slot — uncontested, auto-claim
+    const soloRole = p1Needs ? "p1" : "p2";
+    const solo = room.players[soloRole];
+    const price = 0;
+    solo.items.push({ n: room.currentItem, p: price, freebie: true, cat: info.cat });
+    solo.filled[info.cat] += 1;
+    room.resolved = { item: room.currentItem, price, winner: soloRole, categoryLabel: info.label };
+    drawSlottedLot(room);
+  }
+}
+
+function resolveLot(room, winnerRoleOrNull) {
+  if (room.themeType === "slotted") {
+    const item = room.currentItem, cat = room.currentCategory, categoryLabel = room.currentCategoryLabel, price = room.currentBid;
+    if (winnerRoleOrNull) {
+      const w = room.players[winnerRoleOrNull];
+      w.budget -= price;
+      w.items.push({ n: item, p: price, freebie: false, cat });
+      w.filled[cat] = (w.filled[cat] || 0) + 1;
+    }
+    room.resolved = { item, price, winner: winnerRoleOrNull, categoryLabel };
+    room.nextStarter = other(room.nextStarter);
+    drawSlottedLot(room);
+  } else {
+    const item = room.currentItem;
+    const price = room.currentBid;
+    if (winnerRoleOrNull) {
+      const w = room.players[winnerRoleOrNull];
+      w.budget -= price;
+      w.items.push({ n: item, p: price, freebie: false });
+    } else {
+      room.unsold.push(item);
+    }
+    room.resolved = { item, price, winner: winnerRoleOrNull, categoryLabel: null };
+    room.nextStarter = other(room.nextStarter);
+    drawOpenLot(room);
+  }
 }
 
 function applyLeftoversSlotted(room) {
@@ -69,27 +146,11 @@ function applyLeftoversSlotted(room) {
     });
   });
 }
-
-function applyLeftoversOpen(room) {
-  ["p1", "p2"].forEach((role) => {
-    const other = role === "p1" ? "p2" : "p1";
-    const me = room.players[role];
-    const opp = room.players[other];
-    if (me.items.length < 5 && opp.items.length >= 5) {
-      while (me.items.length < 5 && room.unsold.length) {
-        const it = room.unsold.shift();
-        me.items.push({ n: it, p: 0, freebie: true });
-      }
-    }
-  });
-}
+// ---------- sanitize ----------
 
 function sanitize(room, role) {
-  const otherRole = role === "p1" ? "p2" : "p1";
-  const me = room.players[role];
-  const opp = room.players[otherRole];
+  const opp = room.players[other(role)];
   const meEligible = room.themeType === "slotted" ? (role === "p1" ? room.eligibleP1 : room.eligibleP2) : true;
-
   return {
     code: room.code,
     theme: room.theme,
@@ -100,11 +161,12 @@ function sanitize(room, role) {
     currentItem: room.phase === "auction" ? room.currentItem : null,
     currentCategoryLabel: room.themeType === "slotted" ? room.currentCategoryLabel : null,
     meEligible,
+    currentBid: room.currentBid,
+    currentBidder: room.currentBidder === role ? "me" : (room.currentBidder ? "opp" : null),
+    turn: room.turn === role ? "me" : "opp",
     resolved: room.resolved,
-    me: { role, name: me.name, budget: me.budget, items: me.items, submitted: me.submitted },
-    opponent: opp
-      ? { name: opp.name, budget: opp.budget, items: opp.items, submitted: opp.submitted }
-      : null,
+    me: { role, name: room.players[role].name, budget: room.players[role].budget, items: room.players[role].items },
+    opponent: opp ? { name: opp.name, budget: opp.budget, items: opp.items } : null,
   };
 }
 
@@ -132,13 +194,8 @@ export default async (req) => {
         const theme = String(body.theme || "").slice(0, 60);
         if (!theme) return json({ error: "Need a theme" }, 400);
 
-        let code;
-        let attempts = 0;
-        do {
-          code = genCode();
-          attempts += 1;
-        } while ((await store.get(code)) && attempts < 10);
-
+        let code, attempts = 0;
+        do { code = genCode(); attempts += 1; } while ((await store.get(code)) && attempts < 10);
         const token = genToken();
         let room;
 
@@ -147,10 +204,11 @@ export default async (req) => {
           if (lots.length < 5) return json({ error: "Need at least 5 items" }, 400);
           room = {
             code, theme, themeType: "open",
-            lots: shuffle(lots).slice(0, 10), lotIndex: 0, unsold: [],
+            lots: shuffle(lots), lotIndex: 0, unsold: [],
+            nextStarter: "p1", currentItem: null, currentBid: 0, currentBidder: null, turn: "p1", openPasses: 0,
             phase: "lobby", resolved: null,
             players: {
-              p1: { token, name: "Player 1", budget: 20, items: [], bid: null, submitted: false },
+              p1: { token, name: "Player 1", budget: 20, items: [] },
               p2: null,
             },
           };
@@ -163,11 +221,12 @@ export default async (req) => {
           room = {
             code, theme, themeType: "slotted",
             categories, pools: shuffledPools, catIndex: 0,
-            currentItem: null, currentCategory: null, currentCategoryLabel: null,
+            nextStarter: "p1", currentItem: null, currentCategory: null, currentCategoryLabel: null,
+            currentBid: 0, currentBidder: null, turn: "p1", openPasses: 0,
             eligibleP1: true, eligibleP2: true,
             phase: "lobby", resolved: null,
             players: {
-              p1: { token, name: "Player 1", budget: 20, items: [], bid: null, submitted: false, filled: {} },
+              p1: { token, name: "Player 1", budget: 20, items: [], filled: {} },
               p2: null,
             },
           };
@@ -185,21 +244,21 @@ export default async (req) => {
         if (room.players.p2) return json({ error: "That room's already full" }, 409);
 
         const token = genToken();
-        room.players.p2 = { token, name: "Player 2", budget: 20, items: [], bid: null, submitted: false };
+        room.players.p2 = { token, name: "Player 2", budget: 20, items: [] };
+        room.phase = "auction";
         if (room.themeType === "slotted") {
           room.players.p2.filled = {};
           room.categories.forEach((c) => { room.players.p2.filled[c.cat] = 0; });
-          room.phase = "auction";
-          computeSlottedLot(room);
+          drawSlottedLot(room);
         } else {
-          room.phase = "auction";
+          drawOpenLot(room);
         }
 
         await store.setJSON(code, room);
         return json({ code, token, role: "p2" });
       }
 
-      if (action === "bid") {
+      if (action === "raise" || action === "pass") {
         const code = String(body.code || "").toUpperCase();
         const token = body.token || "";
         const room = await store.get(code, { type: "json" });
@@ -207,54 +266,77 @@ export default async (req) => {
         if (room.phase !== "auction") return json({ error: "The auction isn't running" }, 400);
         const role = roleForToken(room, token);
         if (!role) return json({ error: "Invalid token" }, 403);
+        if (room.turn !== role) return json({ error: "It's not your turn" }, 400);
 
-        const me = room.players[role];
-        if (me.submitted) return json(sanitize(room, role));
-
-        const amt = Math.max(0, Math.min(me.budget, Math.floor(Number(body.amount) || 0)));
-        me.bid = amt;
-        me.submitted = true;
-
-        if (room.players.p1.submitted && room.players.p2.submitted) {
-          const p1 = room.players.p1;
-          const p2 = room.players.p2;
-          let winner = null;
-          if (p1.bid > p2.bid) winner = "p1";
-          else if (p2.bid > p1.bid) winner = "p2";
-
-          if (room.themeType === "slotted") {
-            const item = room.currentItem;
-            const cat = room.currentCategory;
-            if (winner) {
-              const w = room.players[winner];
-              w.budget -= w.bid;
-              w.items.push({ n: item, p: w.bid, freebie: false, cat });
-              w.filled[cat] = (w.filled[cat] || 0) + 1;
-            }
-            room.resolved = {
-              item, p1Bid: p1.bid, p2Bid: p2.bid, winner,
-              categoryLabel: room.currentCategoryLabel,
-              eligibleP1: room.eligibleP1, eligibleP2: room.eligibleP2,
-            };
-            computeSlottedLot(room);
-          } else {
-            const item = room.lots[room.lotIndex];
-            if (winner) {
-              const w = room.players[winner];
-              w.budget -= w.bid;
-              w.items.push({ n: item, p: w.bid, freebie: false });
+        if (action === "raise") {
+          const amt = Math.floor(Number(body.amount) || 0);
+          const budget = room.players[role].budget;
+          if (amt <= room.currentBid) return json({ error: "Bid must beat the current bid" }, 400);
+          if (amt > budget) return json({ error: "You can't afford that" }, 400);
+          room.currentBid = amt;
+          room.currentBidder = role;
+          room.openPasses = 0;
+          room.turn = other(role);
+        } else {
+          if (room.currentBidder === null) {
+            room.openPasses += 1;
+            if (room.openPasses >= 2) {
+              resolveLot(room, null);
             } else {
-              room.unsold.push(item);
+              room.turn = other(role);
             }
-            room.resolved = { item, p1Bid: p1.bid, p2Bid: p2.bid, winner, categoryLabel: null };
-            p1.bid = null; p1.submitted = false;
-            p2.bid = null; p2.submitted = false;
-            room.lotIndex += 1;
-            if (room.lotIndex >= room.lots.length) {
-              applyLeftoversOpen(room);
-              room.phase = "results";
-            }
+          } else {
+            resolveLot(room, room.currentBidder);
           }
+        }
+
+        await store.setJSON(code, room);
+        return json(sanitize(room, role));
+      }
+
+      if (action === "newRound") {
+        const code = String(body.code || "").toUpperCase();
+        const token = body.token || "";
+        const room = await store.get(code, { type: "json" });
+        if (!room) return json({ error: "Room not found" }, 404);
+        const role = roleForToken(room, token);
+        if (!role) return json({ error: "Invalid token" }, 403);
+        if (role !== "p1") return json({ error: "Only the room host can start the next round" }, 403);
+        if (room.phase !== "results") return json({ error: "This round isn't finished yet" }, 400);
+
+        const themeType = body.themeType === "slotted" ? "slotted" : "open";
+        const theme = String(body.theme || "").slice(0, 60);
+        if (!theme) return json({ error: "Need a theme" }, 400);
+
+        room.theme = theme;
+        room.themeType = themeType;
+        room.resolved = null;
+        room.nextStarter = "p1";
+        room.players.p1.budget = 20;
+        room.players.p1.items = [];
+        room.players.p2.budget = 20;
+        room.players.p2.items = [];
+
+        if (themeType === "open") {
+          const lots = Array.isArray(body.lots) ? body.lots.slice(0, 30).map((s) => String(s).slice(0, 60)) : [];
+          if (lots.length < 5) return json({ error: "Need at least 5 items" }, 400);
+          room.lots = shuffle(lots);
+          room.lotIndex = 0;
+          room.unsold = [];
+          drawOpenLot(room);
+        } else {
+          const categories = Array.isArray(body.categories) ? body.categories : [];
+          const pools = body.pools && typeof body.pools === "object" ? body.pools : {};
+          if (!categories.length) return json({ error: "Missing football categories" }, 400);
+          const shuffledPools = {};
+          Object.keys(pools).forEach((k) => { shuffledPools[k] = shuffle(pools[k]); });
+          room.categories = categories;
+          room.pools = shuffledPools;
+          room.catIndex = 0;
+          room.players.p1.filled = {};
+          room.players.p2.filled = {};
+          categories.forEach((c) => { room.players.p1.filled[c.cat] = 0; room.players.p2.filled[c.cat] = 0; });
+          drawSlottedLot(room);
         }
 
         await store.setJSON(code, room);
