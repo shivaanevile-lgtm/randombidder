@@ -233,6 +233,22 @@ let state = {
 let pollTimer = null;
 let aiTimer = null;
 
+// Every network round-trip that can update state.game gets a sequence number
+// at the moment it's SENT, not when it returns. Responses can arrive out of
+// order (a poll in flight when you raise can return after the raise's own
+// response), so we only ever apply a response if nothing newer has already
+// landed — otherwise a stale poll can silently overwrite a fresh action and
+// make it look like a pick got un-awarded.
+let latestRequestSeq = 0;
+let lastAppliedSeq = 0;
+function nextRequestSeq(){ return ++latestRequestSeq; }
+function tryApply(seq, applyFn){
+  if(seq <= lastAppliedSeq) return false; // a newer response already landed — discard this stale one
+  lastAppliedSeq = seq;
+  applyFn();
+  return true;
+}
+
 try{ const saved = localStorage.getItem("byb_nickname"); if(saved) state.nickname = saved; }catch(e){ /* ignore */ }
 
 let DEVICE_ID = "";
@@ -275,10 +291,11 @@ async function attemptResumeSession(){
   state.role = saved.role;
   state.connectMode = saved.connectMode;
   try{
+    const mySeq = nextRequestSeq();
     const res = await fetch(`/api/room?code=${saved.roomCode}&token=${saved.token}`);
     const data = await res.json();
     if(data.error) throw new Error(data.error);
-    if(saved.role === "host") applyHostServerState(data); else applyServerState(data);
+    tryApply(mySeq, ()=>{ if(saved.role === "host") applyHostServerState(data); else applyServerState(data); });
     startPolling();
   }catch(e){
     clearSession();
@@ -978,11 +995,12 @@ function startPolling(){ stopPolling(); pollOnce(); pollTimer = setInterval(poll
 function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer = null; } }
 
 async function pollOnce(){
+  const mySeq = nextRequestSeq();
   try{
     const res = await fetch(`/api/room?code=${state.roomCode}&token=${state.token}`);
     const data = await res.json();
     if(data.error) return;
-    applyServerState(data);
+    tryApply(mySeq, ()=> applyServerState(data));
   }catch(e){ /* transient */ }
 }
 
@@ -1098,20 +1116,22 @@ async function handleRaise(){
   if(state.connectMode === "practice"){ localRaise("me", amt); return; }
 
   try{
+    const mySeq = nextRequestSeq();
     const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ action:"raise", code: state.roomCode, token: state.token, amount: amt }) });
     const data = await res.json();
     if(data.error) return;
-    applyServerState(data);
+    tryApply(mySeq, ()=> applyServerState(data));
   }catch(e){ /* retry on next poll */ }
 }
 
 async function handlePass(){
   if(state.connectMode === "practice"){ localPass("me"); return; }
   try{
+    const mySeq = nextRequestSeq();
     const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ action:"pass", code: state.roomCode, token: state.token }) });
     const data = await res.json();
     if(data.error) return;
-    applyServerState(data);
+    tryApply(mySeq, ()=> applyServerState(data));
   }catch(e){ /* retry on next poll */ }
 }
 
@@ -1124,11 +1144,12 @@ async function handleNewRound(){
     const payload = state.themeType==="slotted"
       ? { action:"newRound", code: state.roomCode, token: state.token, themeType:"slotted", theme: themeName, categories: FOOTBALL_THEME.categories, pools: buildDraftPools() }
       : { action:"newRound", code: state.roomCode, token: state.token, themeType:"open", theme: themeName, lots: state.pool };
+    const mySeq = nextRequestSeq();
     const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
     const data = await res.json();
     if(data.error) throw new Error(data.error);
     state.connecting = false;
-    applyServerState(data);
+    tryApply(mySeq, ()=> applyServerState(data));
     if(!pollTimer) startPolling();
   }catch(e){
     state.connecting = false;
