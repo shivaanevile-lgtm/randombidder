@@ -7,7 +7,7 @@ function json(obj, status = 200) {
 }
 
 export default async (req) => {
-  const store = getStore("ai-prefs");
+  const store = getStore({ name: "ai-prefs", consistency: "strong" });
 
   try {
     if (req.method === "GET") {
