@@ -1027,36 +1027,35 @@ function applyPracticeLeftoversSlotted(){
   });
 }
 
-// ---------- AI HELPERS (custom theme + judge) ----------
+// ---------- FREE offline helpers (custom theme + judge — no API, no cost) ----------
 
-async function callClaude(promptText){
-  const response = await fetch("/api/ai", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ prompt: promptText })
-  });
-  const data = await response.json();
-  if(data.error) throw new Error(data.error);
-  return data.text || "";
+const CUSTOM_ADJECTIVES = ["Custom-built","Vintage","Golden","Turbocharged","Luxury","Handcrafted","State-of-the-art","Rare","Legendary","Portable","Oversized","Limited-edition","Solar-powered","Award-winning","Top-of-the-line","Heavy-duty"];
+const CUSTOM_FEATURES = ["with a built-in sound system","with a mini fridge inside","with a loyal following","with five-star reviews","with a secret menu","with endless refills","with a lifetime warranty","with extra storage","with a fresh coat of paint","with premium upgrades","with a killer paint job","with VIP-only access","with a waiting list","with its own theme song","with a built-in cooler"];
+const CUSTOM_FILLER_FNS = [
+  (t)=>`A basic ${t} starter kit`,
+  (t)=>`A slightly used ${t}`,
+  (t)=>`Last year's ${t} model`,
+  (t)=>`A no-frills ${t}`,
+  (t)=>`A hand-me-down ${t}`,
+  (t)=>`An entry-level ${t}`
+];
+
+function generateCustomThemeLocal(themeText){
+  const t = themeText.trim().toLowerCase();
+  if(!t) return [];
+  const cap = t.charAt(0).toUpperCase()+t.slice(1);
+  const adjItems = shuffleArr(CUSTOM_ADJECTIVES).slice(0,7).map(a=>`${a} ${t}`);
+  const featItems = shuffleArr(CUSTOM_FEATURES).slice(0,7).map(f=>`${cap} ${f}`);
+  const fillerItems = shuffleArr(CUSTOM_FILLER_FNS).slice(0,4).map(fn=>fn(t));
+  return [...adjItems, ...featItems, ...fillerItems];
 }
 
-async function generateCustomTheme(){
+function generateCustomTheme(){
   const text = (state.customText||"").trim();
   if(!text) return;
-  state.loadingCustom = true;
-  render();
-  try{
-    const prompt = `Generate a shopping list for a "build your best ${text}" auction party game. Return ONLY valid JSON, no markdown fences, no preamble: an array of 14 short, specific, concrete item name strings (not vague categories — think "infinite tacos" not "food area"). No prices needed. Keep names under 5 words, playful and specific to the theme.`;
-    const raw = await callClaude(prompt);
-    const clean = raw.replace(/\`\`\`json|\`\`\`/g, "").trim();
-    const items = JSON.parse(clean);
-    state.pool = items.map(String);
-    state.theme = "__custom__";
-    state.themeType = "open";
-  }catch(e){
-    alert("Couldn't generate that theme — try again or pick a preset.");
-  }
-  state.loadingCustom = false;
+  state.pool = generateCustomThemeLocal(text);
+  state.theme = "__custom__";
+  state.themeType = "open";
   render();
 }
 
@@ -1089,30 +1088,82 @@ async function handleShareCard(){
   }
 }
 
-async function judgeBuilds(){
-  state.loadingVerdict = true;
-  render();
+const JUDGE_OPENERS = [
+  "The gavel comes down.", "Let's tally the damage.", "Auction's over — time to judge.", "Numbers don't lie, let's see them."
+];
+const JUDGE_STEAL_LINES = [
+  (name,item,price)=>`${name} straight up stole ${item} for $${price}.`,
+  (name,item,price)=>`Absolute bargain: ${name} walked off with ${item} for only $${price}.`,
+  (name,item,price)=>`${name} got ${item} for pocket change — $${price}.`
+];
+const JUDGE_SPLURGE_LINES = [
+  (name,item,price)=>`${name} went all in on ${item}, dropping $${price}.`,
+  (name,item,price)=>`No restraint from ${name} — $${price} on ${item} alone.`,
+  (name,item,price)=>`${name}'s big swing: ${item} for $${price}.`
+];
+const JUDGE_WIN_LINES = [
+  (name)=>`${name} put more skin in the game and takes it.`,
+  (name)=>`${name} committed harder to the bit — the win goes to ${name}.`,
+  (name)=>`${name} simply wanted it more, dollar for dollar. ${name} takes it.`
+];
+const JUDGE_TIE_LINES = [
+  "Dollar for dollar, it's a dead heat — call it a draw.",
+  "Impossible to separate these two. Split the trophy.",
+  "Too close to call — honestly, a tie."
+];
+
+function localJudge(){
   const g = state.game;
-  const fmt = (it)=> `${it.cat?it.cat+': ':''}${it.n} ($${it.p}${it.freebie?', freebie':''})`;
-  const meList = g.me.items.map(fmt).join(", ");
   const oppLabel = g.opponent ? g.opponent.name : "AI";
-  const oppList = (g.opponent ? g.opponent.items : []).map(fmt).join(", ");
-  const themeName = g.theme || state.theme;
-  const prompt = `You are a witty, slightly savage auction judge. Two players each had a $20 budget to bid on lots for their best "${themeName}".
+  const meSpent = 20 - g.me.budget;
+  const oppSpent = 20 - g.opponent.budget;
+  const meFreebies = g.me.items.filter(i=>i.freebie).length;
+  const oppFreebies = g.opponent.items.filter(i=>i.freebie).length;
+  const bought = (items)=> items.filter(i=>!i.freebie && i.p>0);
+  const meTop = [...bought(g.me.items)].sort((a,b)=>b.p-a.p)[0];
+  const oppTop = [...bought(g.opponent.items)].sort((a,b)=>b.p-a.p)[0];
+  const meSteal = [...bought(g.me.items)].sort((a,b)=>a.p-b.p)[0];
+  const oppSteal = [...bought(g.opponent.items)].sort((a,b)=>a.p-b.p)[0];
 
-You bought: ${meList}
-${oppLabel} bought: ${oppList}
+  const lines = [];
+  lines.push(JUDGE_OPENERS[Math.floor(Math.random()*JUDGE_OPENERS.length)]);
+  lines.push(`You put down $${meSpent} of your $20 across ${g.me.items.length} pick${g.me.items.length===1?'':'s'}${meFreebies?` (${meFreebies} freebie${meFreebies===1?'':'s'})`:''}.`);
+  lines.push(`${oppLabel} spent $${oppSpent}, landing ${g.opponent.items.length} pick${g.opponent.items.length===1?'':'s'}${oppFreebies?` (${oppFreebies} freebie${oppFreebies===1?'':'s'})`:''}.`);
 
-Write a short, funny judgment (5-8 sentences) roasting or praising their choices, then declare a winner on the final line in exactly this format: "WINNER: <name>" (use "You" or "${oppLabel}"). Be playful, not mean-spirited.`;
-  try{
-    const raw = await callClaude(prompt);
-    const match = raw.match(/WINNER:\\s*(.+)/i);
-    state.winner = match ? match[1].trim() : null;
-    state.verdict = raw.replace(/WINNER:\\s*.+/i, "").trim();
-  }catch(e){
-    state.verdict = "The judge is unreachable right now, but honestly? You both did great.";
+  if(meTop && meTop.p >= 5){
+    const fn = JUDGE_SPLURGE_LINES[Math.floor(Math.random()*JUDGE_SPLURGE_LINES.length)];
+    lines.push(fn("You", meTop.n, meTop.p));
   }
-  state.loadingVerdict = false;
+  if(oppTop && oppTop.p >= 5){
+    const fn = JUDGE_SPLURGE_LINES[Math.floor(Math.random()*JUDGE_SPLURGE_LINES.length)];
+    lines.push(fn(oppLabel, oppTop.n, oppTop.p));
+  }
+  if(meSteal && meSteal.p <= 2){
+    const fn = JUDGE_STEAL_LINES[Math.floor(Math.random()*JUDGE_STEAL_LINES.length)];
+    lines.push(fn("You", meSteal.n, meSteal.p));
+  } else if(oppSteal && oppSteal.p <= 2){
+    const fn = JUDGE_STEAL_LINES[Math.floor(Math.random()*JUDGE_STEAL_LINES.length)];
+    lines.push(fn(oppLabel, oppSteal.n, oppSteal.p));
+  }
+
+  let winnerLabel = null;
+  if(meSpent > oppSpent) winnerLabel = "You";
+  else if(oppSpent > meSpent) winnerLabel = oppLabel;
+
+  if(winnerLabel){
+    const fn = JUDGE_WIN_LINES[Math.floor(Math.random()*JUDGE_WIN_LINES.length)];
+    lines.push(fn(winnerLabel));
+  } else {
+    lines.push(JUDGE_TIE_LINES[Math.floor(Math.random()*JUDGE_TIE_LINES.length)]);
+  }
+
+  return { text: lines.join(" "), winner: winnerLabel };
+}
+
+function judgeBuilds(){
+  const result = localJudge();
+  state.winner = result.winner;
+  state.verdict = result.text;
   render();
 }
 
