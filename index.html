@@ -93,6 +93,7 @@
   .results-title{font-family:var(--serif);font-size:26px;font-weight:400;margin:0 0 4px;}
   .share-card{background:var(--paper);padding:4px;border-radius:24px;}
   .share-card-head{font-family:var(--serif);font-size:15px;color:var(--ink-soft);text-align:center;padding:6px 0 14px;}
+  .pitch-svg{width:100%;max-width:260px;display:block;margin:0 auto 14px;border-radius:10px;}
   @keyframes confetti-fall{ to { transform: translateY(110vh) rotate(720deg); opacity:0; } }
 </style>
 </head>
@@ -214,6 +215,7 @@ let state = {
   loadingCustom: false,
   connectMode: null,
   joinCode: "",
+  nickname: "",
   errorMsg: null,
   connecting: false,
 
@@ -233,6 +235,8 @@ let state = {
 
 let pollTimer = null;
 let aiTimer = null;
+
+try{ const saved = localStorage.getItem("byb_nickname"); if(saved) state.nickname = saved; }catch(e){ /* ignore */ }
 
 // ---------- AI preference memory (per-browser, practice mode only) ----------
 
@@ -413,17 +417,23 @@ function renderSetup(){
 function renderConnect(){
   const themeReady = state.themeType === "slotted" || state.pool.length > 0;
   const themeLabel = state.theme==="__custom__" ? state.customText : state.theme==="__football__" ? FOOTBALL_THEME.label : state.theme;
+  const needsNickname = state.connectMode === "create" || state.connectMode === "join";
+  const nicknameReady = !needsNickname || state.nickname.trim().length > 0;
   return `
     <div class="eyebrow">${state.connectMode==="join" ? "Join a room" : state.connectMode==="create" ? "Create a room" : "Practice vs AI"}</div>
     <h1>${state.connectMode==="join" ? "Enter the code" : "Ready to go"}</h1>
     <div class="sub">${state.connectMode==="join" ? "Ask your opponent for their 5-character room code." : "Theme: " + (themeLabel || "none picked yet")}</div>
     ${state.errorMsg ? `<div class="error-msg">${state.errorMsg}</div>` : ""}
     <div class="card">
+      ${needsNickname ? `
+        <label>Your nickname</label>
+        <input type="text" id="nickname-input" maxlength="20" placeholder="e.g. Alex" value="${state.nickname||''}">
+      ` : ""}
       ${state.connectMode==="join" ? `
         <label>Room code</label>
         <input type="text" id="join-code" maxlength="5" placeholder="ABCDE" value="${state.joinCode}" style="text-transform:uppercase;letter-spacing:4px;font-family:var(--mono);font-size:20px;text-align:center;">
       ` : ""}
-      <button class="btn wide" id="go-btn" ${themeReady ? '' : 'disabled'}>
+      <button class="btn wide" id="go-btn" ${(themeReady && nicknameReady) ? '' : 'disabled'}>
         ${state.connecting ? "Connecting..." : state.connectMode==="join" ? "Join room" : state.connectMode==="create" ? "Create room" : "Start practice round"}
       </button>
     </div>
@@ -522,7 +532,43 @@ function renderAuction(){
   `;
 }
 
-function renderStall(p, label, highlightSteal){
+function shortPlayerName(n){
+  return n.length > 12 ? n.split(" ").pop() : n;
+}
+
+function renderFootballPitch(items){
+  const byCat = {};
+  items.forEach(it=>{ (byCat[it.cat] = byCat[it.cat]||[]).push(it); });
+  const gk = (byCat.GK||[])[0];
+  const def = (byCat.DEF||[])[0];
+  const mids = byCat.MID || [];
+  const att = (byCat.ATT||[])[0];
+
+  const dot = (x,y,player)=>{
+    if(!player) return "";
+    return `
+      <circle cx="${x}" cy="${y}" r="15" fill="#C1543C" stroke="#fff" stroke-width="2"/>
+      <text x="${x}" y="${y+32}" text-anchor="middle" font-size="11" fill="#211E1A" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif">${shortPlayerName(player.n)}</text>
+    `;
+  };
+
+  return `
+    <svg viewBox="0 0 300 400" class="pitch-svg" xmlns="http://www.w3.org/2000/svg">
+      <rect x="4" y="4" width="292" height="392" rx="10" fill="#4C7A52"/>
+      <rect x="4" y="4" width="292" height="392" rx="10" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.55"/>
+      <line x1="4" y1="200" x2="296" y2="200" stroke="#ffffff" stroke-width="1.5" opacity="0.5"/>
+      <circle cx="150" cy="200" r="38" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.5"/>
+      <rect x="85" y="330" width="130" height="58" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.5"/>
+      ${dot(150, 55, att)}
+      ${dot(85, 170, mids[0])}
+      ${dot(215, 170, mids[1])}
+      ${dot(150, 285, def)}
+      ${dot(150, 365, gk)}
+    </svg>
+  `;
+}
+
+function renderStall(p, label, highlightSteal, pitchHtml){
   let stealIdx = -1;
   if(highlightSteal){
     let min = Infinity;
@@ -535,6 +581,7 @@ function renderStall(p, label, highlightSteal){
         <span class="budget">$${p.budget}</span>
       </div>
       <div class="budget-label">remaining · ${p.items.length} item${p.items.length===1?'':'s'}</div>
+      ${pitchHtml || ""}
       <div class="spectrum"></div>
       <ul class="cart">
         ${p.items.length ? p.items.map((it,i)=>`<li class="${it.freebie?'freebie':''}"><span>${it.freebie?'🎁 ':''}${i===stealIdx?'🎉 ':''}${it.cat?`<span class="tagcat">${it.cat}</span>`:''}${it.n}</span><span>${it.freebie?'free':'$'+it.p}</span></li>`).join("") : `<li class="empty">Nothing yet</li>`}
@@ -559,8 +606,8 @@ function renderResults(){
     <div id="share-card" class="share-card">
       <div class="share-card-head">Build Your Best: ${g.theme} ${themeIcon(g.theme)}</div>
       <div class="stalls">
-        ${renderStall(g.me, "You", true)}
-        ${renderStall(g.opponent || {name:'AI',budget:20,items:[]}, oppLabel, true)}
+        ${renderStall(g.me, "You", true, g.themeType==='slotted' ? renderFootballPitch(g.me.items) : null)}
+        ${renderStall(g.opponent || {name:'AI',budget:20,items:[]}, oppLabel, true, g.themeType==='slotted' ? renderFootballPitch((g.opponent||{items:[]}).items) : null)}
       </div>
       <div class="card">
         <div class="results-title">Judgment ${state.winner?`<span class="winner-badge">${state.winner} wins</span>`:''}</div>
@@ -635,6 +682,12 @@ function attachHandlers(){
   const joinCodeInput = document.getElementById("join-code");
   if(joinCodeInput) joinCodeInput.oninput = (e)=>{ state.joinCode = e.target.value.toUpperCase(); };
 
+  const nicknameInput = document.getElementById("nickname-input");
+  if(nicknameInput) nicknameInput.oninput = (e)=>{
+    state.nickname = e.target.value;
+    try{ localStorage.setItem("byb_nickname", state.nickname); }catch(err){ /* ignore */ }
+  };
+
   const goBtn = document.getElementById("go-btn");
   if(goBtn) goBtn.onclick = handleGo;
 
@@ -670,8 +723,9 @@ function attachHandlers(){
   if(restartBtn) restartBtn.onclick = ()=>{
     stopPolling();
     if(aiTimer){ clearTimeout(aiTimer); aiTimer=null; }
+    const keepNickname = state.nickname;
     state = {screen:"setup", theme:null, themeType:null, pool:[], customText:"", loadingCustom:false,
-      connectMode:null, joinCode:"", errorMsg:null, connecting:false,
+      connectMode:null, joinCode:"", nickname:keepNickname, errorMsg:null, connecting:false,
       roomCode:null, token:null, role:null, game:null, revealing:null, bidValue:"",
       verdict:null, winner:null, loadingVerdict:false, _globalPrefs:null};
     render();
@@ -693,8 +747,8 @@ async function handleGo(){
       const themeName = state.theme==="__custom__" ? state.customText : state.theme==="__football__" ? FOOTBALL_THEME.label : state.theme;
       const built = state.themeType==="slotted" ? buildDraftPools() : null;
       const payload = state.themeType==="slotted"
-        ? { action:"create", themeType:"slotted", theme: themeName, categories: FOOTBALL_THEME.categories, pools: built.pools, guaranteedP1: built.guaranteedP1, guaranteedP2: built.guaranteedP2 }
-        : { action:"create", themeType:"open", theme: themeName, lots: state.pool };
+        ? { action:"create", themeType:"slotted", theme: themeName, name: state.nickname.trim(), categories: FOOTBALL_THEME.categories, pools: built.pools, guaranteedP1: built.guaranteedP1, guaranteedP2: built.guaranteedP2 }
+        : { action:"create", themeType:"open", theme: themeName, name: state.nickname.trim(), lots: state.pool };
       const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
       const data = await res.json();
       if(data.error) throw new Error(data.error);
@@ -716,7 +770,7 @@ async function handleGo(){
     if(state.joinCode.length < 5){ state.errorMsg = "Enter the full 5-character code."; render(); return; }
     state.connecting = true; render();
     try{
-      const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ action:"join", code: state.joinCode }) });
+      const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ action:"join", code: state.joinCode, name: state.nickname.trim() }) });
       const data = await res.json();
       if(data.error) throw new Error(data.error);
       state.roomCode = data.code; state.token = data.token; state.role = data.role;
@@ -958,7 +1012,9 @@ function aiActPractice(){
     maxWillingness = (budget / stillNeeded) * (1.3 + Math.random()*0.9);
   }
 
-  const nextBid = g.currentBid + 1 + Math.floor(Math.random()*3);
+  const bumpRoll = Math.random();
+  const bump = bumpRoll < 0.6 ? 1 : (bumpRoll < 0.85 ? 2 : 3);
+  const nextBid = g.currentBid + bump;
   const wantsToOpen = g.themeType === "slotted"
     ? Math.random() < Math.min(0.97, 0.55 + playerRatingFactor(g.currentItem)*0.3)
     : Math.random() < 0.92;
@@ -1062,7 +1118,10 @@ function startPracticeSlotted(){
 function drawSlottedLotLocal(){
   const g = state.game;
   let info = g.categories[g.catIndex];
-  while(info && g.me.filled[info.cat] >= info.count && g.opponent.filled[info.cat] >= info.count){
+  // only stay on a category while BOTH players still need it — once only one side
+  // needs it (or neither does), move on; that leftover need gets swept in for free
+  // once the whole draft is done, instead of being auto-awarded mid-draft.
+  while(info && !(g.me.filled[info.cat] < info.count && g.opponent.filled[info.cat] < info.count)){
     g.catIndex += 1;
     info = g.categories[g.catIndex];
   }
@@ -1071,27 +1130,13 @@ function drawSlottedLotLocal(){
     state.screen = "results";
     return;
   }
-  const meNeeds = g.me.filled[info.cat] < info.count;
-  const oppNeeds = g.opponent.filled[info.cat] < info.count;
   g.currentCategory = info.cat;
   g.currentCategoryLabel = info.label;
   const pool = g.pools[info.cat];
   g.currentItem = pool.length ? pool.shift() : "Free agent " + info.label.toLowerCase();
-  g.meEligible = meNeeds;
-  g.eligibleOpp = oppNeeds;
-
-  if(meNeeds && oppNeeds){
-    startTurnAuctionLocal();
-  } else {
-    const soloKey = meNeeds ? "me" : "opp";
-    const solo = soloKey==="me" ? g.me : g.opponent;
-    const price = 0;
-    solo.items.push({ n:g.currentItem, p:price, freebie:true, cat:info.cat });
-    solo.filled[info.cat] += 1;
-    state.revealing = { item:g.currentItem, price, winner:soloKey, categoryLabel:info.label };
-    triggerRevealEffects(state.revealing);
-    setTimeout(()=>{ state.revealing=null; drawSlottedLotLocal(); render(); }, 1900);
-  }
+  g.meEligible = true;
+  g.eligibleOpp = true;
+  startTurnAuctionLocal();
 }
 
 function applyPracticeLeftoversSlotted(){
@@ -1099,7 +1144,9 @@ function applyPracticeLeftoversSlotted(){
   [g.me, g.opponent].forEach(p=>{
     g.categories.forEach(info=>{
       while(p.filled[info.cat] < info.count){
-        p.items.push({ n:"Free agent "+info.label.toLowerCase(), p:0, freebie:true, cat:info.cat });
+        const pool = g.pools[info.cat];
+        const name = pool && pool.length ? pool.shift() : ("Free agent " + info.label.toLowerCase());
+        p.items.push({ n:name, p:0, freebie:true, cat:info.cat });
         p.filled[info.cat] += 1;
       }
     });
