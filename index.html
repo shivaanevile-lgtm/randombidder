@@ -993,6 +993,15 @@ function aiActPractice(){
   if(!g || g.turn !== "opp") return;
   const budget = g.opponent.budget;
 
+  // Hard affordability gate — if the AI can't cover even a $1 raise over the
+  // current bid, it must pass, full stop. This runs before any willingness math
+  // so a broke AI can never do anything but pass, lot after lot, letting the
+  // human keep winning cheap picks until item/category caps are reached.
+  if(budget <= g.currentBid){
+    localPass("opp");
+    return;
+  }
+
   let maxWillingness;
   if(g.themeType === "slotted"){
     const needed = totalRemainingNeededLocal(g.opponent, g.categories, g.catIndex);
