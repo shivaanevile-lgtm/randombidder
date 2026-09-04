@@ -237,6 +237,7 @@ export default async (req) => {
         do { code = genCode(); attempts += 1; } while ((await store.get(code)) && attempts < 10);
         const token = genToken();
         const hostName = String(body.name || "").trim().slice(0, 20) || "Host";
+        const hostDeviceId = String(body.deviceId || "").trim().slice(0, 64);
 
         const room = {
           code, theme, themeType: "open", mode: "hosted",
@@ -244,7 +245,7 @@ export default async (req) => {
           nextStarter: "p1", currentItem: null, currentBid: 0, currentBidder: null, turn: "p1", openPasses: 0,
           phase: "lobby", resolved: null,
           players: {
-            host: { token, name: hostName },
+            host: { token, deviceId: hostDeviceId, name: hostName },
             p1: null,
             p2: null,
           },
@@ -263,6 +264,7 @@ export default async (req) => {
         do { code = genCode(); attempts += 1; } while ((await store.get(code)) && attempts < 10);
         const token = genToken();
         const p1Name = String(body.name || "").trim().slice(0, 20) || "Player 1";
+        const p1DeviceId = String(body.deviceId || "").trim().slice(0, 64);
         let room;
 
         if (themeType === "open") {
@@ -274,7 +276,7 @@ export default async (req) => {
             nextStarter: "p1", currentItem: null, currentBid: 0, currentBidder: null, turn: "p1", openPasses: 0,
             phase: "lobby", resolved: null,
             players: {
-              p1: { token, name: p1Name, budget: 20, items: [] },
+              p1: { token, deviceId: p1DeviceId, name: p1Name, budget: 20, items: [] },
               p2: null,
             },
           };
@@ -292,7 +294,7 @@ export default async (req) => {
             eligibleP1: true, eligibleP2: true,
             phase: "lobby", resolved: null,
             players: {
-              p1: { token, name: p1Name, budget: 20, items: [], filled: {}, skipCounts: {} },
+              p1: { token, deviceId: p1DeviceId, name: p1Name, budget: 20, items: [], filled: {}, skipCounts: {} },
               p2: null,
             },
           };
@@ -309,16 +311,23 @@ export default async (req) => {
         if (!loaded) return json({ error: "Room not found" }, 404);
         const room = loaded.room;
         const bidderName = String(body.name || "").trim().slice(0, 20);
+        const deviceId = String(body.deviceId || "").trim().slice(0, 64);
 
         if (room.mode === "hosted") {
+          if (room.players.p1 && room.players.p1.deviceId && room.players.p1.deviceId === deviceId) {
+            return json({ code, token: room.players.p1.token, role: "p1" });
+          }
+          if (room.players.p2 && room.players.p2.deviceId && room.players.p2.deviceId === deviceId) {
+            return json({ code, token: room.players.p2.token, role: "p2" });
+          }
           if (room.players.p1 && room.players.p2) return json({ error: "That room's already full" }, 409);
           const token = genToken();
           let role;
           if (!room.players.p1) {
-            room.players.p1 = { token, name: bidderName || "Player 1", budget: 20, items: [] };
+            room.players.p1 = { token, deviceId, name: bidderName || "Player 1", budget: 20, items: [] };
             role = "p1";
           } else {
-            room.players.p2 = { token, name: bidderName || "Player 2", budget: 20, items: [] };
+            room.players.p2 = { token, deviceId, name: bidderName || "Player 2", budget: 20, items: [] };
             room.phase = "auction";
             drawOpenLot(room);
             role = "p2";
@@ -328,10 +337,13 @@ export default async (req) => {
           return json({ code, token, role });
         }
 
+        if (room.players.p2 && room.players.p2.deviceId && room.players.p2.deviceId === deviceId) {
+          return json({ code, token: room.players.p2.token, role: "p2" });
+        }
         if (room.players.p2) return json({ error: "That room's already full" }, 409);
 
         const token = genToken();
-        room.players.p2 = { token, name: bidderName || "Player 2", budget: 20, items: [] };
+        room.players.p2 = { token, deviceId, name: bidderName || "Player 2", budget: 20, items: [] };
         room.phase = "auction";
         if (room.themeType === "slotted") {
           room.players.p2.filled = {};
