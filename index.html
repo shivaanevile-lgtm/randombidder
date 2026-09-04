@@ -235,6 +235,17 @@ let aiTimer = null;
 
 try{ const saved = localStorage.getItem("byb_nickname"); if(saved) state.nickname = saved; }catch(e){ /* ignore */ }
 
+let DEVICE_ID = "";
+try{
+  DEVICE_ID = localStorage.getItem("byb_device_id") || "";
+  if(!DEVICE_ID){
+    DEVICE_ID = "dev_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem("byb_device_id", DEVICE_ID);
+  }
+}catch(e){
+  DEVICE_ID = "dev_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
 // ---------- session persistence (survives reloads/backgrounding) ----------
 
 const SESSION_KEY = "byb_session_v1";
@@ -876,8 +887,8 @@ async function handleGo(){
     try{
       const themeName = state.theme==="__custom__" ? state.customText : state.theme==="__football__" ? FOOTBALL_THEME.label : state.theme;
       const payload = state.themeType==="slotted"
-        ? { action:"create", themeType:"slotted", theme: themeName, name: state.nickname.trim(), categories: FOOTBALL_THEME.categories, pools: buildDraftPools() }
-        : { action:"create", themeType:"open", theme: themeName, name: state.nickname.trim(), lots: state.pool };
+        ? { action:"create", themeType:"slotted", theme: themeName, name: state.nickname.trim(), deviceId: DEVICE_ID, categories: FOOTBALL_THEME.categories, pools: buildDraftPools() }
+        : { action:"create", themeType:"open", theme: themeName, name: state.nickname.trim(), deviceId: DEVICE_ID, lots: state.pool };
       const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
       const data = await res.json();
       if(data.error) throw new Error(data.error);
@@ -900,7 +911,7 @@ async function handleGo(){
     state.connecting = true; render();
     try{
       const themeName = state.theme==="__custom__" ? state.customText : state.theme;
-      const payload = { action:"createHosted", theme: themeName, name: state.nickname.trim(), lots: state.pool };
+      const payload = { action:"createHosted", theme: themeName, name: state.nickname.trim(), deviceId: DEVICE_ID, lots: state.pool };
       const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
       const data = await res.json();
       if(data.error) throw new Error(data.error);
@@ -923,7 +934,7 @@ async function handleGo(){
     if(state.joinCode.length < 5){ state.errorMsg = "Enter the full 5-character code."; render(); return; }
     state.connecting = true; render();
     try{
-      const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ action:"join", code: state.joinCode, name: state.nickname.trim() }) });
+      const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ action:"join", code: state.joinCode, name: state.nickname.trim(), deviceId: DEVICE_ID }) });
       const data = await res.json();
       if(data.error) throw new Error(data.error);
       state.roomCode = data.code; state.token = data.token; state.role = data.role;
