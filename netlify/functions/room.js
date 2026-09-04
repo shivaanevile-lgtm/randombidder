@@ -217,7 +217,7 @@ export default async (req) => {
           const pools = body.pools && typeof body.pools === "object" ? body.pools : {};
           if (!categories.length) return json({ error: "Missing football categories" }, 400);
           const shuffledPools = {};
-          Object.keys(pools).forEach((k) => { shuffledPools[k] = shuffle(pools[k]); });
+          Object.keys(pools).forEach((k) => { shuffledPools[k] = Array.isArray(pools[k]) ? pools[k].slice() : []; });
           room = {
             code, theme, themeType: "slotted",
             categories, pools: shuffledPools, catIndex: 0,
@@ -329,7 +329,7 @@ export default async (req) => {
           const pools = body.pools && typeof body.pools === "object" ? body.pools : {};
           if (!categories.length) return json({ error: "Missing football categories" }, 400);
           const shuffledPools = {};
-          Object.keys(pools).forEach((k) => { shuffledPools[k] = shuffle(pools[k]); });
+          Object.keys(pools).forEach((k) => { shuffledPools[k] = Array.isArray(pools[k]) ? pools[k].slice() : []; });
           room.categories = categories;
           room.pools = shuffledPools;
           room.catIndex = 0;
