@@ -122,12 +122,43 @@ const FOOTBALL_THEME = {
     { cat:"ATT", label:"Attacker", count:1 }
   ],
   pools: {
-    GK: ["Alisson","Ederson","Donnarumma","Emiliano Martinez","David Raya","Mike Maignan","Diogo Costa","Andriy Lunin","Unai Simón","Marc-André ter Stegen","Yassine Bounou","Illan Meslier"],
-    DEF: ["Van Dijk","William Saliba","Ruben Dias","Josko Gvardiol","Alessandro Bastoni","Achraf Hakimi","Theo Hernandez","Trent Alexander-Arnold","Jules Kounde","Antonio Rudiger","Dayot Upamecano","Marquinhos"],
-    MID: ["Jude Bellingham","Pedri","Gavi","Rodri","Declan Rice","Frenkie de Jong","Martin Odegaard","Federico Valverde","Bruno Fernandes","Enzo Fernandez","Moises Caicedo","Aurelien Tchouameni","Jamal Musiala","Florian Wirtz"],
-    ATT: ["Mbappe","Haaland","Vinicius Jr","Salah","Lautaro Martinez","Harry Kane","Bukayo Saka","Ousmane Dembele","Rafael Leao","Victor Osimhen","Lamine Yamal","Khvicha Kvaratskhelia"]
+    GK: ["Alisson","Ederson","Donnarumma","Emiliano Martinez","David Raya","Mike Maignan","Diogo Costa","Andriy Lunin","Unai Simón","Marc-André ter Stegen","Yassine Bounou","Illan Meslier","Thibaut Courtois","Jan Oblak","Manuel Neuer","Wojciech Szczesny","Kepa Arrizabalaga","Bernd Leno","Alex Meret","Vicente Guaita","Robin Olsen","Lukas Hradecky","Odysseas Vlachodimos","Matz Sels"],
+    DEF: ["Van Dijk","William Saliba","Ruben Dias","Josko Gvardiol","Alessandro Bastoni","Achraf Hakimi","Theo Hernandez","Trent Alexander-Arnold","Jules Kounde","Antonio Rudiger","Dayot Upamecano","Marquinhos","Kim Min-jae","Gabriel Magalhaes","Pau Cubarsi","Nuno Mendes","Alphonso Davies","Ben White","Kyle Walker","Reece James","Milan Skriniar","Cristian Romero","Ronald Araujo","Manuel Akanji"],
+    MID: ["Jude Bellingham","Pedri","Gavi","Rodri","Declan Rice","Frenkie de Jong","Martin Odegaard","Federico Valverde","Bruno Fernandes","Enzo Fernandez","Moises Caicedo","Aurelien Tchouameni","Jamal Musiala","Florian Wirtz","Kevin De Bruyne","Ilkay Gundogan","Nicolo Barella","Sandro Tonali","Xavi Simons","Warren Zaire-Emery","Vitinha","Joao Neves","Ryan Gravenberch","Conor Gallagher","Mason Mount","Christian Pulisic","Dominik Szoboszlai","Alexis Mac Allister"],
+    ATT: ["Mbappe","Haaland","Vinicius Jr","Salah","Lautaro Martinez","Harry Kane","Bukayo Saka","Ousmane Dembele","Rafael Leao","Victor Osimhen","Lamine Yamal","Khvicha Kvaratskhelia","Antoine Griezmann","Robert Lewandowski","Julian Alvarez","Alexander Isak","Ollie Watkins","Rasmus Hojlund","Marcus Rashford","Phil Foden","Cole Palmer","Nico Williams","Gonçalo Ramos","Serhou Guirassy"]
   }
 };
+
+// Rough 1-10 "how good is this player" ratings — lets the AI actually value star
+// picks higher instead of bidding the same on everyone. Unlisted names default to 7.
+const PLAYER_RATINGS = {
+  "Alisson":9, "Ederson":8, "Donnarumma":8, "Emiliano Martinez":8, "David Raya":7,
+  "Mike Maignan":7, "Diogo Costa":7, "Andriy Lunin":6, "Unai Simón":6, "Marc-André ter Stegen":7,
+  "Yassine Bounou":6, "Illan Meslier":5, "Thibaut Courtois":8, "Jan Oblak":8, "Manuel Neuer":7,
+  "Wojciech Szczesny":6, "Kepa Arrizabalaga":6, "Bernd Leno":6, "Alex Meret":6, "Vicente Guaita":5,
+  "Robin Olsen":5, "Lukas Hradecky":6, "Odysseas Vlachodimos":5, "Matz Sels":6,
+  "Van Dijk":9, "William Saliba":8, "Ruben Dias":8, "Josko Gvardiol":8, "Alessandro Bastoni":8,
+  "Achraf Hakimi":8, "Theo Hernandez":7, "Trent Alexander-Arnold":8, "Jules Kounde":7,
+  "Antonio Rudiger":7, "Dayot Upamecano":7, "Marquinhos":7, "Kim Min-jae":8, "Gabriel Magalhaes":8,
+  "Pau Cubarsi":8, "Nuno Mendes":7, "Alphonso Davies":8, "Ben White":7, "Kyle Walker":7,
+  "Reece James":7, "Milan Skriniar":7, "Cristian Romero":7, "Ronald Araujo":8, "Manuel Akanji":7,
+  "Jude Bellingham":10, "Pedri":9, "Gavi":8, "Rodri":9, "Declan Rice":8, "Frenkie de Jong":8,
+  "Martin Odegaard":8, "Federico Valverde":8, "Bruno Fernandes":8, "Enzo Fernandez":7,
+  "Moises Caicedo":7, "Aurelien Tchouameni":7, "Jamal Musiala":9, "Florian Wirtz":9,
+  "Kevin De Bruyne":9, "Ilkay Gundogan":7, "Nicolo Barella":8, "Sandro Tonali":7, "Xavi Simons":7,
+  "Warren Zaire-Emery":8, "Vitinha":8, "Joao Neves":8, "Ryan Gravenberch":7, "Conor Gallagher":6,
+  "Mason Mount":6, "Christian Pulisic":7, "Dominik Szoboszlai":8, "Alexis Mac Allister":8,
+  "Mbappe":10, "Haaland":10, "Vinicius Jr":9, "Salah":9, "Lautaro Martinez":8, "Harry Kane":9,
+  "Bukayo Saka":8, "Ousmane Dembele":8, "Rafael Leao":7, "Victor Osimhen":8,
+  "Lamine Yamal":9, "Khvicha Kvaratskhelia":8, "Antoine Griezmann":8, "Robert Lewandowski":8,
+  "Julian Alvarez":8, "Alexander Isak":8, "Ollie Watkins":7, "Rasmus Hojlund":7,
+  "Marcus Rashford":7, "Phil Foden":9, "Cole Palmer":8, "Nico Williams":8, "Gonçalo Ramos":7,
+  "Serhou Guirassy":7
+};
+function playerRatingFactor(name){
+  const rating = PLAYER_RATINGS[name] || 7;
+  return rating / 7.5; // ~0.67x for a 5-rated bench player up to ~1.33x for a 10-rated superstar
+}
 
 const THEME_ICONS = {
   "Backyard": "🌳", "Gaming Room": "🎮", "Underground Bunker": "🛡️",
@@ -880,7 +911,8 @@ function aiActPractice(){
   let maxWillingness;
   if(g.themeType === "slotted"){
     const needed = totalRemainingNeededLocal(g.opponent, g.categories, g.catIndex);
-    maxWillingness = (budget / needed) * (1.5 + Math.random()*1.0);
+    const ratingFactor = playerRatingFactor(g.currentItem);
+    maxWillingness = (budget / needed) * (1.5 + Math.random()*1.0) * ratingFactor;
   } else {
     const owned = g.opponent.items.length;
     const stillNeeded = Math.max(1, 5 - owned);
@@ -888,7 +920,9 @@ function aiActPractice(){
   }
 
   const nextBid = g.currentBid + 1 + Math.floor(Math.random()*3);
-  const wantsToOpen = Math.random() < 0.92;
+  const wantsToOpen = g.themeType === "slotted"
+    ? Math.random() < Math.min(0.97, 0.55 + playerRatingFactor(g.currentItem)*0.3)
+    : Math.random() < 0.92;
 
   const catLabel = g.themeType==="slotted" ? g.currentCategoryLabel : null;
   const learned = getLearnedInterest(g.currentItem, catLabel);
