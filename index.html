@@ -680,6 +680,7 @@ function attachHandlers(){
   if(nicknameInput) nicknameInput.oninput = (e)=>{
     state.nickname = e.target.value;
     try{ localStorage.setItem("byb_nickname", state.nickname); }catch(err){ /* ignore */ }
+    render();
   };
 
   const goBtn = document.getElementById("go-btn");
@@ -923,28 +924,42 @@ function localRaise(role, amt){
     recordHumanInterest(g.currentItem, catLabel, amt);
   }
   state.bidTicker.push(`${role==="me"?"You":(g.opponent?g.opponent.name:"AI")}: $${amt}`);
+
+  const bothEligible = g.meEligible && g.eligibleOpp;
   g.currentBid = amt;
-  g.currentBidder = role;
-  g.openPasses = 0;
-  g.turn = otherRole(role);
-  render();
-  if(g.turn === "opp") scheduleAi();
+  if(bothEligible){
+    g.currentBidder = role;
+    g.openPasses = 0;
+    g.turn = otherRole(role);
+    render();
+    if(g.turn === "opp") scheduleAi();
+  } else {
+    // solo lot — nobody to respond, this claims it immediately
+    finishLotLocal(role);
+  }
 }
 
 function localPass(role){
   const g = state.game;
-  if(g.currentBidder === null){
-    g.openPasses += 1;
-    if(g.openPasses >= 2){
-      finishLotLocal(null);
-      return;
+  const bothEligible = g.meEligible && g.eligibleOpp;
+  if(bothEligible){
+    if(g.currentBidder === null){
+      g.openPasses += 1;
+      if(g.openPasses >= 2){
+        finishLotLocal(null);
+        return;
+      } else {
+        g.turn = otherRole(role);
+        render();
+        if(g.turn === "opp") scheduleAi();
+      }
     } else {
-      g.turn = otherRole(role);
-      render();
-      if(g.turn === "opp") scheduleAi();
+      finishLotLocal(g.currentBidder);
     }
   } else {
-    finishLotLocal(g.currentBidder);
+    // solo pass — they don't want this specific one, redraw another
+    if(g.themeType === "slotted") drawSlottedLotLocal(); else drawOpenLotLocal();
+    render();
   }
 }
 
@@ -1075,17 +1090,49 @@ function drawOpenLotLocal(){
   else if(state._unsold.length){ item = state._unsold.shift(); }
   else { item = "Bonus pick"; }
   g.currentItem = item;
+  g.meEligible = meNeeds;
+  g.eligibleOpp = oppNeeds;
 
   if(meNeeds && oppNeeds){
     startTurnAuctionLocal();
   } else {
+    // solo lot — only one side still needs it, gets a turn to claim it themselves
     const soloKey = meNeeds ? "me" : "opp";
     const solo = soloKey==="me" ? g.me : g.opponent;
-    solo.items.push({ n:item, p:0, freebie:true });
-    state.revealing = { item, price:0, winner:soloKey, categoryLabel:null };
-    triggerRevealEffects(state.revealing);
-    setTimeout(()=>{ state.revealing=null; drawOpenLotLocal(); render(); }, 1900);
+    g.turn = soloKey;
+    g.currentBid = 0; g.currentBidder = null; g.openPasses = 0;
+    state.bidValue = "";
+    if(solo.budget === 0){
+      claimSoloLocal(soloKey, 0);
+    } else if(soloKey === "opp"){
+      const amt = Math.max(1, Math.min(solo.budget, 1 + Math.floor(Math.random()*2)));
+      aiTimer = setTimeout(()=> claimSoloLocal("opp", amt), 800);
+    }
+    // if soloKey === "me" with budget > 0, wait for the human's raise/pass click
   }
+}
+
+function claimSoloLocal(who, amount){
+  const g = state.game;
+  const player = who === "me" ? g.me : g.opponent;
+  const item = g.currentItem;
+  const category = g.themeType === "slotted" ? g.currentCategory : undefined;
+  const categoryLabel = g.themeType === "slotted" ? g.currentCategoryLabel : null;
+
+  player.budget -= amount;
+  const entry = { n:item, p:amount, freebie:amount===0 };
+  if(category) entry.cat = category;
+  player.items.push(entry);
+  if(category) player.filled[category] += 1;
+
+  state.revealing = { item, price:amount, winner:who, categoryLabel };
+  triggerRevealEffects(state.revealing);
+  setTimeout(()=>{
+    state.revealing = null;
+    if(g.themeType === "slotted") drawSlottedLotLocal(); else drawOpenLotLocal();
+    render();
+  }, 1900);
+  render();
 }
 
 // ---------- PRACTICE: SLOTTED FOOTBALL ----------
@@ -1113,39 +1160,39 @@ function startPracticeSlotted(){
 function drawSlottedLotLocal(){
   const g = state.game;
   let info = g.categories[g.catIndex];
-  // only stay on a category while BOTH players still need it — once only one side
-  // needs it (or neither does), move on; that leftover need gets swept in for free
-  // once the whole draft is done, instead of being auto-awarded mid-draft.
-  while(info && !(g.me.filled[info.cat] < info.count && g.opponent.filled[info.cat] < info.count)){
+  while(info && g.me.filled[info.cat] >= info.count && g.opponent.filled[info.cat] >= info.count){
     g.catIndex += 1;
     info = g.categories[g.catIndex];
   }
   if(!info){
-    applyPracticeLeftoversSlotted();
     state.screen = "results";
     return;
   }
+  const meNeeds = g.me.filled[info.cat] < info.count;
+  const oppNeeds = g.opponent.filled[info.cat] < info.count;
   g.currentCategory = info.cat;
   g.currentCategoryLabel = info.label;
   const pool = g.pools[info.cat];
   g.currentItem = pool.length ? pool.shift() : "Free agent " + info.label.toLowerCase();
-  g.meEligible = true;
-  g.eligibleOpp = true;
-  startTurnAuctionLocal();
-}
+  g.meEligible = meNeeds;
+  g.eligibleOpp = oppNeeds;
 
-function applyPracticeLeftoversSlotted(){
-  const g = state.game;
-  [g.me, g.opponent].forEach(p=>{
-    g.categories.forEach(info=>{
-      while(p.filled[info.cat] < info.count){
-        const pool = g.pools[info.cat];
-        const name = pool && pool.length ? pool.shift() : ("Free agent " + info.label.toLowerCase());
-        p.items.push({ n:name, p:0, freebie:true, cat:info.cat });
-        p.filled[info.cat] += 1;
-      }
-    });
-  });
+  if(meNeeds && oppNeeds){
+    startTurnAuctionLocal();
+  } else {
+    // solo position — only one side still needs it, gets a turn to claim it themselves
+    const soloKey = meNeeds ? "me" : "opp";
+    const solo = soloKey==="me" ? g.me : g.opponent;
+    g.turn = soloKey;
+    g.currentBid = 0; g.currentBidder = null; g.openPasses = 0;
+    state.bidValue = "";
+    if(solo.budget === 0){
+      claimSoloLocal(soloKey, 0);
+    } else if(soloKey === "opp"){
+      const amt = Math.max(1, Math.min(solo.budget, 1 + Math.floor(Math.random()*2)));
+      aiTimer = setTimeout(()=> claimSoloLocal("opp", amt), 800);
+    }
+  }
 }
 
 // ---------- FREE offline helpers (custom theme + judge — no API, no cost) ----------
