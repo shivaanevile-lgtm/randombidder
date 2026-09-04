@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Build Your Best ___</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root{
     --paper:#F5EFE3;
@@ -54,6 +55,8 @@
   .bid-status{font-family:var(--mono);font-size:15px;color:var(--ink-soft);margin-bottom:22px;}
   .bid-status .amt{font-size:26px;font-weight:700;color:var(--rust);}
   .bid-status .who{font-family:var(--sans);font-size:12px;color:var(--ink-soft);}
+  .bid-ticker{font-family:var(--sans);font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;line-height:1.6;}
+  .bid-ticker .arrow{color:var(--line);}
   .turn-flag{font-family:var(--sans);font-size:13px;font-weight:600;color:var(--sage);margin-bottom:14px;}
   .turn-flag.waiting{color:var(--ink-soft);font-weight:400;font-style:italic;}
   .raise-row{display:flex;gap:10px;align-items:stretch;max-width:320px;margin:0 auto 12px;}
@@ -88,6 +91,9 @@
   .loading{font-family:var(--sans);color:var(--ink-soft);font-style:italic;font-size:14px;}
   .winner-badge{display:inline-block;background:var(--sage);color:#fff;font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:0.4px;padding:4px 12px;border-radius:20px;margin-left:10px;vertical-align:middle;}
   .results-title{font-family:var(--serif);font-size:26px;font-weight:400;margin:0 0 4px;}
+  .share-card{background:var(--paper);padding:4px;border-radius:24px;}
+  .share-card-head{font-family:var(--serif);font-size:15px;color:var(--ink-soft);text-align:center;padding:6px 0 14px;}
+  @keyframes confetti-fall{ to { transform: translateY(110vh) rotate(720deg); opacity:0; } }
 </style>
 </head>
 <body>
@@ -123,6 +129,14 @@ const FOOTBALL_THEME = {
   }
 };
 
+const THEME_ICONS = {
+  "Backyard": "🌳", "Gaming Room": "🎮", "Underground Bunker": "🛡️",
+  "Perfect Vacation": "🏖️", "Superhero Draft": "🦸", "Perfect Life": "✨",
+  "Best Fruit": "🍉", "Best Movies": "🎬", "Best TV Shows": "📺", "Best Music Artists": "🎤",
+  "Football (5-a-side)": "⚽", "__custom__": "🎲"
+};
+function themeIcon(name){ return THEME_ICONS[name] || "🎯"; }
+
 let state = {
   screen: "setup",
   theme: null,
@@ -145,7 +159,8 @@ let state = {
   verdict: null,
   winner: null,
   loadingVerdict: false,
-  _globalPrefs: null
+  _globalPrefs: null,
+  bidTicker: []
 };
 
 let pollTimer = null;
@@ -206,7 +221,67 @@ async function fetchGlobalPrefs(){
   }catch(e){ /* offline or not deployed yet — falls back to local memory only */ }
 }
 
+// ---------- sound + confetti ----------
+
+let audioCtx = null;
+function getAudioCtx(){
+  if(!audioCtx){
+    try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ audioCtx = null; }
+  }
+  if(audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(()=>{});
+  return audioCtx;
+}
+function playTone(freq, duration, type, startTime, gainPeak){
+  const ctx = getAudioCtx();
+  if(!ctx) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type || "sine";
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, ctx.currentTime + startTime);
+  gain.gain.linearRampToValueAtTime(gainPeak||0.15, ctx.currentTime + startTime + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startTime + duration);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(ctx.currentTime + startTime);
+  osc.stop(ctx.currentTime + startTime + duration + 0.02);
+}
+function playGavelSound(){
+  playTone(140, 0.12, "square", 0, 0.16);
+  playTone(95, 0.14, "square", 0.06, 0.12);
+}
+function playCoinSound(){
+  playTone(880, 0.09, "square", 0, 0.11);
+  playTone(1318, 0.14, "square", 0.07, 0.11);
+}
+function triggerConfetti(){
+  const colors = ['#C1543C','#E3A62F','#5C8A5C','#7A7264'];
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;';
+  document.body.appendChild(container);
+  for(let i=0;i<28;i++){
+    const p = document.createElement('div');
+    const size = 6+Math.random()*6;
+    p.style.cssText = `position:absolute;top:-20px;left:${Math.random()*100}%;width:${size}px;height:${size*0.6}px;background:${colors[i%colors.length]};opacity:0.9;border-radius:2px;transform:rotate(${Math.random()*360}deg);animation:confetti-fall ${1.2+Math.random()*0.8}s ease-in forwards;animation-delay:${Math.random()*0.2}s;`;
+    container.appendChild(p);
+  }
+  setTimeout(()=>container.remove(), 2400);
+}
+function triggerRevealEffects(r){
+  playGavelSound();
+  if(r.winner === "me"){
+    setTimeout(()=>playCoinSound(), 130);
+    if(r.price >= 1 && r.price <= 2){
+      setTimeout(()=>triggerConfetti(), 160);
+    }
+  }
+}
+
 function render(){
+  const active = document.activeElement;
+  const activeId = active && active.id;
+  const selStart = active && typeof active.selectionStart === "number" ? active.selectionStart : null;
+  const selEnd = active && typeof active.selectionEnd === "number" ? active.selectionEnd : null;
+
   const app = document.getElementById("app");
   if(state.screen==="setup") app.innerHTML = renderSetup();
   else if(state.screen==="connect") app.innerHTML = renderConnect();
@@ -214,6 +289,16 @@ function render(){
   else if(state.screen==="auction") app.innerHTML = renderAuction();
   else if(state.screen==="results") app.innerHTML = renderResults();
   attachHandlers();
+
+  if(activeId){
+    const el = document.getElementById(activeId);
+    if(el && (el.tagName==="INPUT" || el.tagName==="TEXTAREA")){
+      el.focus({ preventScroll:true });
+      if(selStart !== null && selEnd !== null && el.setSelectionRange){
+        try{ el.setSelectionRange(selStart, selEnd); }catch(e){ /* ignore */ }
+      }
+    }
+  }
 }
 
 // ---------- SETUP ----------
@@ -227,9 +312,9 @@ function renderSetup(){
     <div class="card">
       <label>Pick a theme</label>
       <div class="row">
-        ${Object.keys(OPEN_THEMES).map(t=>`<button class="chip ${state.theme===t?'active':''}" data-theme="${t}">${t}</button>`).join("")}
-        <button class="chip ${state.theme==='__football__'?'active':''}" data-theme="__football__">${FOOTBALL_THEME.label}</button>
-        <button class="chip ${state.theme==='__custom__'?'active':''}" data-theme="__custom__">Custom...</button>
+        ${Object.keys(OPEN_THEMES).map(t=>`<button class="chip ${state.theme===t?'active':''}" data-theme="${t}">${themeIcon(t)} ${t}</button>`).join("")}
+        <button class="chip ${state.theme==='__football__'?'active':''}" data-theme="__football__">${themeIcon(FOOTBALL_THEME.label)} ${FOOTBALL_THEME.label}</button>
+        <button class="chip ${state.theme==='__custom__'?'active':''}" data-theme="__custom__">${themeIcon('__custom__')} Custom...</button>
       </div>
       ${state.theme==="__football__" ? `
         <div class="sub" style="margin-bottom:0;">Draft order: <b>1 Goalkeeper → 1 Defender → 2 Midfielders → 1 Attacker.</b> You bid on each position until your side is filled.</div>
@@ -282,7 +367,7 @@ function renderConnect(){
 
 function renderRoomWait(){
   return `
-    <div class="eyebrow">${state.game ? state.game.theme : ''}</div>
+    <div class="eyebrow">${state.game ? themeIcon(state.game.theme)+' '+state.game.theme : ''}</div>
     <h1>Waiting for your opponent</h1>
     <div class="sub">Send them this code. As soon as they join, the auction starts.</div>
     <div class="card">
@@ -312,7 +397,7 @@ function renderAuction(){
     const iWon = r.winner === "me";
     const oppWon = r.winner === "opp";
     return `
-      <div class="eyebrow">${g.theme}${isSlotted && r.categoryLabel ? " · " + r.categoryLabel : ""}</div>
+      <div class="eyebrow">${themeIcon(g.theme)} ${g.theme}${isSlotted && r.categoryLabel ? " · " + r.categoryLabel : ""}</div>
       <h1>${r.winner ? "Sold" : "Passed"}</h1>
       <div class="card lot-card">
         <div class="lot-name">${r.item}</div>
@@ -329,7 +414,7 @@ function renderAuction(){
   const noBidYet = g.currentBidder === null;
 
   return `
-    <div class="eyebrow">${g.theme}</div>
+    <div class="eyebrow">${themeIcon(g.theme)} ${g.theme}</div>
     <h1>Live auction</h1>
     ${isSlotted
       ? `<div class="squad-progress">${squadProgressText(g.me.filled, g.categories)}</div>`
@@ -343,6 +428,7 @@ function renderAuction(){
       <div class="bid-status">
         ${noBidYet ? "No bids yet" : `<span class="amt">$${g.currentBid}</span> <span class="who">— currently held by ${g.currentBidder==='me'?'you':(g.opponent?g.opponent.name:'AI')}</span>`}
       </div>
+      ${state.bidTicker.length ? `<div class="bid-ticker">${state.bidTicker.map(t=>`<span>${t}</span>`).join(' <span class="arrow">→</span> ')}</div>` : ""}
 
       ${!meEligible ? `
         <div class="waiting"><span class="dot on"></span>You've already filled this spot — waiting on ${g.opponent ? g.opponent.name : 'the AI'}...</div>
@@ -368,7 +454,12 @@ function renderAuction(){
   `;
 }
 
-function renderStall(p, label){
+function renderStall(p, label, highlightSteal){
+  let stealIdx = -1;
+  if(highlightSteal){
+    let min = Infinity;
+    p.items.forEach((it,i)=>{ if(!it.freebie && it.p>0 && it.p<min){ min=it.p; stealIdx=i; } });
+  }
   return `
     <div class="card stall">
       <div class="stall-head">
@@ -378,7 +469,7 @@ function renderStall(p, label){
       <div class="budget-label">remaining · ${p.items.length} item${p.items.length===1?'':'s'}</div>
       <div class="spectrum"></div>
       <ul class="cart">
-        ${p.items.length ? p.items.map(it=>`<li class="${it.freebie?'freebie':''}"><span>${it.freebie?'🎁 ':''}${it.cat?`<span class="tagcat">${it.cat}</span>`:''}${it.n}</span><span>${it.freebie?'free':'$'+it.p}</span></li>`).join("") : `<li class="empty">Nothing yet</li>`}
+        ${p.items.length ? p.items.map((it,i)=>`<li class="${it.freebie?'freebie':''}"><span>${it.freebie?'🎁 ':''}${i===stealIdx?'🎉 ':''}${it.cat?`<span class="tagcat">${it.cat}</span>`:''}${it.n}</span><span>${it.freebie?'free':'$'+it.p}</span></li>`).join("") : `<li class="empty">Nothing yet</li>`}
       </ul>
     </div>
   `;
@@ -394,27 +485,32 @@ function renderResults(){
   const rematchThemeReady = state.themeType === "slotted" || state.pool.length > 0;
 
   return `
-    <div class="eyebrow">${g.theme}</div>
+    <div class="eyebrow">${themeIcon(g.theme)} ${g.theme}</div>
     <h1>The reveal</h1>
     <div class="sub">Here's what you and ${oppLabel} walked away with.</div>
-    <div class="stalls">
-      ${renderStall(g.me, "You")}
-      ${renderStall(g.opponent || {name:'AI',budget:20,items:[]}, oppLabel)}
+    <div id="share-card" class="share-card">
+      <div class="share-card-head">Build Your Best: ${g.theme} ${themeIcon(g.theme)}</div>
+      <div class="stalls">
+        ${renderStall(g.me, "You", true)}
+        ${renderStall(g.opponent || {name:'AI',budget:20,items:[]}, oppLabel, true)}
+      </div>
+      <div class="card">
+        <div class="results-title">Judgment ${state.winner?`<span class="winner-badge">${state.winner} wins</span>`:''}</div>
+        ${state.loadingVerdict ? `<div class="loading">The judge is deliberating...</div>` : ""}
+        ${state.verdict ? `<div class="verdict">${state.verdict}</div>` : ""}
+        ${!state.verdict && !state.loadingVerdict ? `<button class="btn" id="judge-btn" style="margin-top:8px;">Judge the builds</button>` : ""}
+      </div>
     </div>
-    <div class="card">
-      <div class="results-title">Judgment ${state.winner?`<span class="winner-badge">${state.winner} wins</span>`:''}</div>
-      ${state.loadingVerdict ? `<div class="loading">The judge is deliberating...</div>` : ""}
-      ${state.verdict ? `<div class="verdict">${state.verdict}</div>` : ""}
-      ${!state.verdict && !state.loadingVerdict ? `<button class="btn" id="judge-btn" style="margin-top:8px;">Judge the builds</button>` : ""}
-    </div>
+
+    <button class="btn secondary wide" id="share-btn">📸 Save as image</button>
 
     ${isOnline && isHost ? `
       <div class="card">
         <label>Play another round with the same code — pick a new theme</label>
         <div class="row">
-          ${Object.keys(OPEN_THEMES).map(t=>`<button class="chip ${state.theme===t?'active':''}" data-theme="${t}">${t}</button>`).join("")}
-          <button class="chip ${state.theme==='__football__'?'active':''}" data-theme="__football__">${FOOTBALL_THEME.label}</button>
-          <button class="chip ${state.theme==='__custom__'?'active':''}" data-theme="__custom__">Custom...</button>
+          ${Object.keys(OPEN_THEMES).map(t=>`<button class="chip ${state.theme===t?'active':''}" data-theme="${t}">${themeIcon(t)} ${t}</button>`).join("")}
+          <button class="chip ${state.theme==='__football__'?'active':''}" data-theme="__football__">${themeIcon(FOOTBALL_THEME.label)} ${FOOTBALL_THEME.label}</button>
+          <button class="chip ${state.theme==='__custom__'?'active':''}" data-theme="__custom__">${themeIcon('__custom__')} Custom...</button>
         </div>
         ${state.theme==="__custom__" ? `
           <input type="text" id="custom-input" placeholder="e.g. treehouse, food truck..." value="${state.customText||''}">
@@ -495,6 +591,9 @@ function attachHandlers(){
 
   const judgeBtn = document.getElementById("judge-btn");
   if(judgeBtn) judgeBtn.onclick = judgeBuilds;
+
+  const shareBtn = document.getElementById("share-btn");
+  if(shareBtn) shareBtn.onclick = handleShareCard;
 
   const nextRoundBtn = document.getElementById("next-round-btn");
   if(nextRoundBtn) nextRoundBtn.onclick = handleNewRound;
@@ -581,6 +680,16 @@ async function pollOnce(){
 function applyServerState(data){
   const prevKey = state.game && state.game.resolved ? JSON.stringify(state.game.resolved) : null;
   const newKey = data.resolved ? JSON.stringify(data.resolved) : null;
+  const prevGame = state.game;
+
+  if(data.phase === "auction"){
+    if(!prevGame || prevGame.currentItem !== data.currentItem){
+      state.bidTicker = [];
+    } else if(prevGame.currentBid !== data.currentBid && data.currentBidder){
+      const who = data.currentBidder === "me" ? "You" : (data.opponent ? data.opponent.name : "Them");
+      state.bidTicker.push(`${who}: $${data.currentBid}`);
+    }
+  }
 
   state.game = {
     theme: data.theme, themeType: data.themeType, phase: data.phase,
@@ -612,6 +721,7 @@ function applyServerState(data){
         item: r.item, categoryLabel: r.categoryLabel, price: r.price,
         winner: r.winner === state.role ? "me" : (r.winner ? "opp" : null)
       };
+      triggerRevealEffects(state.revealing);
       setTimeout(()=>{ state.revealing = null; render(); }, 1900);
     }
     state.bidValue = "";
@@ -681,6 +791,7 @@ function startTurnAuctionLocal(){
   const g = state.game;
   g.currentBid = 0; g.currentBidder = null; g.openPasses = 0; g.turn = g.nextStarter;
   state.bidValue = "";
+  state.bidTicker = [];
   if(g.turn === "opp") scheduleAi();
 }
 
@@ -695,6 +806,7 @@ function localRaise(role, amt){
     const catLabel = g.themeType==="slotted" ? g.currentCategoryLabel : null;
     recordHumanInterest(g.currentItem, catLabel, amt);
   }
+  state.bidTicker.push(`${role==="me"?"You":(g.opponent?g.opponent.name:"AI")}: $${amt}`);
   g.currentBid = amt;
   g.currentBidder = role;
   g.openPasses = 0;
@@ -731,6 +843,7 @@ function finishLotLocal(winnerOrNull){
       w.filled[cat] += 1;
     }
     state.revealing = { item, price, winner: winnerOrNull, categoryLabel };
+    triggerRevealEffects(state.revealing);
     g.nextStarter = otherRole(g.nextStarter);
     setTimeout(()=>{ state.revealing=null; drawSlottedLotLocal(); render(); }, 1900);
   } else {
@@ -743,6 +856,7 @@ function finishLotLocal(winnerOrNull){
       state._unsold.push(item);
     }
     state.revealing = { item, price, winner: winnerOrNull, categoryLabel:null };
+    triggerRevealEffects(state.revealing);
     g.nextStarter = otherRole(g.nextStarter);
     setTimeout(()=>{ state.revealing=null; drawOpenLotLocal(); render(); }, 1900);
   }
@@ -839,6 +953,7 @@ function drawOpenLotLocal(){
     const solo = soloKey==="me" ? g.me : g.opponent;
     solo.items.push({ n:item, p:0, freebie:true });
     state.revealing = { item, price:0, winner:soloKey, categoryLabel:null };
+    triggerRevealEffects(state.revealing);
     setTimeout(()=>{ state.revealing=null; drawOpenLotLocal(); render(); }, 1900);
   }
 }
@@ -895,6 +1010,7 @@ function drawSlottedLotLocal(){
     solo.items.push({ n:g.currentItem, p:price, freebie:true, cat:info.cat });
     solo.filled[info.cat] += 1;
     state.revealing = { item:g.currentItem, price, winner:soloKey, categoryLabel:info.label };
+    triggerRevealEffects(state.revealing);
     setTimeout(()=>{ state.revealing=null; drawSlottedLotLocal(); render(); }, 1900);
   }
 }
@@ -941,6 +1057,35 @@ async function generateCustomTheme(){
   }
   state.loadingCustom = false;
   render();
+}
+
+async function handleShareCard(){
+  const target = document.getElementById('share-card');
+  const btn = document.getElementById('share-btn');
+  if(!target || typeof html2canvas === 'undefined') return;
+  if(btn) btn.textContent = "Generating...";
+  try{
+    const canvas = await html2canvas(target, { backgroundColor: '#F5EFE3', scale: 2 });
+    canvas.toBlob(async (blob)=>{
+      const fileName = 'build-your-best.png';
+      const file = new File([blob], fileName, { type: 'image/png' });
+      if(navigator.share && navigator.canShare && navigator.canShare({ files:[file] })){
+        try{
+          await navigator.share({ files:[file], title:'Build Your Best', text:'Check out my build!' });
+          if(btn) btn.textContent = "📸 Save as image";
+          return;
+        }catch(e){ /* cancelled or unsupported — fall back to download */ }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fileName;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 3000);
+      if(btn) btn.textContent = "📸 Save as image";
+    }, 'image/png');
+  }catch(e){
+    if(btn) btn.textContent = "📸 Save as image";
+  }
 }
 
 async function judgeBuilds(){
