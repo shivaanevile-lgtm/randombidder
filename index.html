@@ -600,6 +600,8 @@ function renderAuction(){
       ${renderStall(g.me, "You")}
       ${renderStall(g.opponent || {name:'AI',budget:20,items:[]}, g.opponent ? g.opponent.name : "AI")}
     </div>
+
+    <button class="btn secondary wide" id="exit-auction-btn" style="margin-top:8px;">Exit auction</button>
   `;
 }
 
@@ -753,6 +755,8 @@ function renderHostAuction(){
       ${renderStall(g.playerA || {name:'Bidder A',budget:20,items:[]}, g.playerA?g.playerA.name:'Bidder A — waiting to join')}
       ${renderStall(g.playerB || {name:'Bidder B',budget:20,items:[]}, g.playerB?g.playerB.name:'Bidder B — waiting to join')}
     </div>
+
+    <button class="btn secondary wide" id="exit-auction-btn" style="margin-top:8px;">Exit auction</button>
   `;
 }
 
@@ -839,6 +843,23 @@ function attachHandlers(){
 
   const leaveBtn = document.getElementById("leave-btn");
   if(leaveBtn) leaveBtn.onclick = ()=>{ stopPolling(); clearSession(); state.screen = "setup"; render(); };
+
+  const exitAuctionBtn = document.getElementById("exit-auction-btn");
+  if(exitAuctionBtn) exitAuctionBtn.onclick = ()=>{
+    const msg = state.connectMode === "practice"
+      ? "Exit this practice round?"
+      : "Exit the auction? You won't be able to rejoin this room.";
+    if(!confirm(msg)) return;
+    stopPolling();
+    if(aiTimer){ clearTimeout(aiTimer); aiTimer=null; }
+    clearSession();
+    const keepNickname = state.nickname;
+    state = {screen:"setup", theme:null, themeType:null, pool:[], customText:"", loadingCustom:false,
+      connectMode:null, joinCode:"", nickname:keepNickname, errorMsg:null, connecting:false,
+      roomCode:null, token:null, role:null, game:null, revealing:null, bidValue:"",
+      verdict:null, winner:null, loadingVerdict:false, _globalPrefs:null, bidTicker:[]};
+    render();
+  };
 
   const bidInput = document.getElementById("bid-input");
   if(bidInput) bidInput.oninput = (e)=>{ state.bidValue = e.target.value; };
