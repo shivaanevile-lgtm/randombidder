@@ -144,7 +144,8 @@ let state = {
   bidValue: "",
   verdict: null,
   winner: null,
-  loadingVerdict: false
+  loadingVerdict: false,
+  _globalPrefs: null
 };
 
 let pollTimer = null;
@@ -174,13 +175,35 @@ function recordHumanInterest(itemName, categoryLabel, amount){
     prefs.categories[categoryLabel] = c;
   }
   savePrefs(prefs);
+
+  // best-effort contribution to the shared global learning store
+  fetch("/api/prefs", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ item:itemName, category:categoryLabel, amount })
+  }).catch(()=>{ /* offline or not deployed yet — local memory still works */ });
 }
 function getLearnedInterest(itemName, categoryLabel){
   const prefs = loadPrefs();
   const itemScore = itemName ? (prefs.items[itemName] || 0) : 0;
   const catEntry = categoryLabel ? prefs.categories[categoryLabel] : null;
   const catScore = catEntry && catEntry.count ? catEntry.sum / catEntry.count : 0;
-  return Math.max(itemScore, catScore);
+
+  let globalItemScore = 0, globalCatScore = 0;
+  if(state._globalPrefs){
+    const gi = itemName ? state._globalPrefs.items[itemName] : null;
+    if(gi && gi.count) globalItemScore = gi.sum / gi.count;
+    const gc = categoryLabel ? state._globalPrefs.categories[categoryLabel] : null;
+    if(gc && gc.count) globalCatScore = gc.sum / gc.count;
+  }
+
+  return Math.max(itemScore, catScore, globalItemScore, globalCatScore);
+}
+async function fetchGlobalPrefs(){
+  try{
+    const res = await fetch("/api/prefs");
+    const data = await res.json();
+    if(!data.error) state._globalPrefs = data;
+  }catch(e){ /* offline or not deployed yet — falls back to local memory only */ }
 }
 
 function render(){
@@ -366,6 +389,10 @@ function renderStall(p, label){
 function renderResults(){
   const g = state.game;
   const oppLabel = g.opponent ? g.opponent.name : "AI";
+  const isOnline = !!state.roomCode;
+  const isHost = state.role === "p1";
+  const rematchThemeReady = state.themeType === "slotted" || state.pool.length > 0;
+
   return `
     <div class="eyebrow">${g.theme}</div>
     <h1>The reveal</h1>
@@ -380,7 +407,30 @@ function renderResults(){
       ${state.verdict ? `<div class="verdict">${state.verdict}</div>` : ""}
       ${!state.verdict && !state.loadingVerdict ? `<button class="btn" id="judge-btn" style="margin-top:8px;">Judge the builds</button>` : ""}
     </div>
-    <button class="btn secondary wide" id="restart-btn">Build something else</button>
+
+    ${isOnline && isHost ? `
+      <div class="card">
+        <label>Play another round with the same code — pick a new theme</label>
+        <div class="row">
+          ${Object.keys(OPEN_THEMES).map(t=>`<button class="chip ${state.theme===t?'active':''}" data-theme="${t}">${t}</button>`).join("")}
+          <button class="chip ${state.theme==='__football__'?'active':''}" data-theme="__football__">${FOOTBALL_THEME.label}</button>
+          <button class="chip ${state.theme==='__custom__'?'active':''}" data-theme="__custom__">Custom...</button>
+        </div>
+        ${state.theme==="__custom__" ? `
+          <input type="text" id="custom-input" placeholder="e.g. treehouse, food truck..." value="${state.customText||''}">
+          <button class="btn secondary" id="gen-custom">${state.loadingCustom?'Cooking up items...':'Generate items'}</button>
+        ` : ""}
+        ${state.errorMsg ? `<div class="error-msg">${state.errorMsg}</div>` : ""}
+        <button class="btn wide" id="next-round-btn" ${rematchThemeReady ? '' : 'disabled'}>${state.connecting ? "Starting..." : "Start next round"}</button>
+      </div>
+    ` : ""}
+    ${isOnline && !isHost ? `
+      <div class="card">
+        <div class="waiting"><span class="dot on"></span>Waiting for ${oppLabel} to pick the next round...</div>
+      </div>
+    ` : ""}
+
+    <button class="btn secondary wide" id="restart-btn">Leave and start over</button>
   `;
 }
 
@@ -446,6 +496,9 @@ function attachHandlers(){
   const judgeBtn = document.getElementById("judge-btn");
   if(judgeBtn) judgeBtn.onclick = judgeBuilds;
 
+  const nextRoundBtn = document.getElementById("next-round-btn");
+  if(nextRoundBtn) nextRoundBtn.onclick = handleNewRound;
+
   const restartBtn = document.getElementById("restart-btn");
   if(restartBtn) restartBtn.onclick = ()=>{
     stopPolling();
@@ -453,7 +506,7 @@ function attachHandlers(){
     state = {screen:"setup", theme:null, themeType:null, pool:[], customText:"", loadingCustom:false,
       connectMode:null, joinCode:"", errorMsg:null, connecting:false,
       roomCode:null, token:null, role:null, game:null, revealing:null, bidValue:"",
-      verdict:null, winner:null, loadingVerdict:false};
+      verdict:null, winner:null, loadingVerdict:false, _globalPrefs:null};
     render();
   };
 }
@@ -548,7 +601,11 @@ function applyServerState(data){
   if(data.phase === "lobby"){
     state.screen = "room-wait";
   } else if(data.phase === "auction"){
-    if(state.screen !== "auction") state.screen = "auction";
+    if(state.screen !== "auction"){
+      state.screen = "auction";
+      state.verdict = null;
+      state.winner = null;
+    }
     if(newKey && newKey !== prevKey && !state.revealing){
       const r = data.resolved;
       state.revealing = {
@@ -559,7 +616,7 @@ function applyServerState(data){
     }
     state.bidValue = "";
   } else if(data.phase === "results"){
-    if(!state.revealing){ state.screen = "results"; stopPolling(); }
+    if(!state.revealing){ state.screen = "results"; }
   }
   render();
 }
@@ -587,6 +644,28 @@ async function handlePass(){
     if(data.error) return;
     applyServerState(data);
   }catch(e){ /* retry on next poll */ }
+}
+
+async function handleNewRound(){
+  state.errorMsg = null;
+  state.connecting = true;
+  render();
+  try{
+    const themeName = state.theme==="__custom__" ? state.customText : state.theme==="__football__" ? FOOTBALL_THEME.label : state.theme;
+    const payload = state.themeType==="slotted"
+      ? { action:"newRound", code: state.roomCode, token: state.token, themeType:"slotted", theme: themeName, categories: FOOTBALL_THEME.categories, pools: FOOTBALL_THEME.pools }
+      : { action:"newRound", code: state.roomCode, token: state.token, themeType:"open", theme: themeName, lots: state.pool };
+    const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    state.connecting = false;
+    applyServerState(data);
+    if(!pollTimer) startPolling();
+  }catch(e){
+    state.connecting = false;
+    state.errorMsg = "Couldn't start the next round (" + e.message + ").";
+    render();
+  }
 }
 
 // ---------- PRACTICE: shared ascending-auction engine ----------
@@ -736,6 +815,7 @@ function startPracticeOpen(){
   state._lots = lots;
   state._unsold = [];
   state.screen = "auction";
+  fetchGlobalPrefs();
   drawOpenLotLocal();
   render();
 }
@@ -780,6 +860,7 @@ function startPracticeSlotted(){
     opponent: { name:"AI", budget:20, items:[], filled:{GK:0,DEF:0,MID:0,ATT:0} }
   };
   state.screen = "auction";
+  fetchGlobalPrefs();
   drawSlottedLotLocal();
   render();
 }
