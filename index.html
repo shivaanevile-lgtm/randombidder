@@ -150,6 +150,39 @@ let state = {
 let pollTimer = null;
 let aiTimer = null;
 
+// ---------- AI preference memory (per-browser, practice mode only) ----------
+
+const PREFS_KEY = "byb_ai_prefs_v1";
+function loadPrefs(){
+  try{
+    const raw = localStorage.getItem(PREFS_KEY);
+    return raw ? JSON.parse(raw) : { items:{}, categories:{} };
+  }catch(e){ return { items:{}, categories:{} }; }
+}
+function savePrefs(prefs){
+  try{ localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); }catch(e){ /* storage unavailable, fine */ }
+}
+function recordHumanInterest(itemName, categoryLabel, amount){
+  if(amount <= 0) return;
+  const prefs = loadPrefs();
+  if(itemName){
+    prefs.items[itemName] = Math.max(prefs.items[itemName]||0, amount);
+  }
+  if(categoryLabel){
+    const c = prefs.categories[categoryLabel] || { sum:0, count:0 };
+    c.sum += amount; c.count += 1;
+    prefs.categories[categoryLabel] = c;
+  }
+  savePrefs(prefs);
+}
+function getLearnedInterest(itemName, categoryLabel){
+  const prefs = loadPrefs();
+  const itemScore = itemName ? (prefs.items[itemName] || 0) : 0;
+  const catEntry = categoryLabel ? prefs.categories[categoryLabel] : null;
+  const catScore = catEntry && catEntry.count ? catEntry.sum / catEntry.count : 0;
+  return Math.max(itemScore, catScore);
+}
+
 function render(){
   const app = document.getElementById("app");
   if(state.screen==="setup") app.innerHTML = renderSetup();
@@ -579,6 +612,10 @@ function scheduleAi(){
 
 function localRaise(role, amt){
   const g = state.game;
+  if(role === "me"){
+    const catLabel = g.themeType==="slotted" ? g.currentCategoryLabel : null;
+    recordHumanInterest(g.currentItem, catLabel, amt);
+  }
   g.currentBid = amt;
   g.currentBidder = role;
   g.openPasses = 0;
@@ -659,6 +696,12 @@ function aiActPractice(){
 
   const nextBid = g.currentBid + 1 + Math.floor(Math.random()*3);
   const wantsToOpen = Math.random() < 0.92;
+
+  const catLabel = g.themeType==="slotted" ? g.currentCategoryLabel : null;
+  const learned = getLearnedInterest(g.currentItem, catLabel);
+  if(learned > 0){
+    maxWillingness = Math.max(maxWillingness, Math.min(budget, learned * 1.15));
+  }
 
   if(g.currentBidder === null){
     if(wantsToOpen && nextBid <= Math.min(budget, maxWillingness)){
