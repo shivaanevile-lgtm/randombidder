@@ -71,7 +71,10 @@ function drawOpenLot(room) {
 
 function drawSlottedLot(room) {
   let info = room.categories[room.catIndex];
-  while (info && room.players.p1.filled[info.cat] >= info.count && room.players.p2.filled[info.cat] >= info.count) {
+  // only stay on a category while BOTH players still need it — once only one side
+  // needs it (or neither does), move on; that leftover need gets swept in for free
+  // once the whole draft is done, instead of being auto-awarded mid-draft.
+  while (info && !(room.players.p1.filled[info.cat] < info.count && room.players.p2.filled[info.cat] < info.count)) {
     room.catIndex += 1;
     info = room.categories[room.catIndex];
   }
@@ -83,28 +86,14 @@ function drawSlottedLot(room) {
     room.currentCategoryLabel = null;
     return;
   }
-  const p1Needs = room.players.p1.filled[info.cat] < info.count;
-  const p2Needs = room.players.p2.filled[info.cat] < info.count;
 
   room.currentCategory = info.cat;
   room.currentCategoryLabel = info.label;
   const pool = room.pools[info.cat];
   room.currentItem = pool.length ? pool.shift() : "Free agent " + info.label.toLowerCase();
-  room.eligibleP1 = p1Needs;
-  room.eligibleP2 = p2Needs;
-
-  if (p1Needs && p2Needs) {
-    startTurnAuction(room);
-  } else {
-    // exactly one player still needs this slot — uncontested, auto-claim
-    const soloRole = p1Needs ? "p1" : "p2";
-    const solo = room.players[soloRole];
-    const price = 0;
-    solo.items.push({ n: room.currentItem, p: price, freebie: true, cat: info.cat });
-    solo.filled[info.cat] += 1;
-    room.resolved = { item: room.currentItem, price, winner: soloRole, categoryLabel: info.label };
-    drawSlottedLot(room);
-  }
+  room.eligibleP1 = true;
+  room.eligibleP2 = true;
+  startTurnAuction(room);
 }
 
 function resolveLot(room, winnerRoleOrNull) {
@@ -140,7 +129,9 @@ function applyLeftoversSlotted(room) {
     const p = room.players[role];
     room.categories.forEach((info) => {
       while (p.filled[info.cat] < info.count) {
-        p.items.push({ n: "Free agent " + info.label.toLowerCase(), p: 0, freebie: true, cat: info.cat });
+        const pool = room.pools[info.cat];
+        const name = pool && pool.length ? pool.shift() : ("Free agent " + info.label.toLowerCase());
+        p.items.push({ n: name, p: 0, freebie: true, cat: info.cat });
         p.filled[info.cat] += 1;
       }
     });
@@ -197,6 +188,7 @@ export default async (req) => {
         let code, attempts = 0;
         do { code = genCode(); attempts += 1; } while ((await store.get(code)) && attempts < 10);
         const token = genToken();
+        const p1Name = String(body.name || "").trim().slice(0, 20) || "Player 1";
         let room;
 
         if (themeType === "open") {
@@ -208,7 +200,7 @@ export default async (req) => {
             nextStarter: "p1", currentItem: null, currentBid: 0, currentBidder: null, turn: "p1", openPasses: 0,
             phase: "lobby", resolved: null,
             players: {
-              p1: { token, name: "Player 1", budget: 20, items: [] },
+              p1: { token, name: p1Name, budget: 20, items: [] },
               p2: null,
             },
           };
@@ -226,7 +218,7 @@ export default async (req) => {
             eligibleP1: true, eligibleP2: true,
             phase: "lobby", resolved: null,
             players: {
-              p1: { token, name: "Player 1", budget: 20, items: [], filled: {} },
+              p1: { token, name: p1Name, budget: 20, items: [], filled: {} },
               p2: null,
             },
           };
@@ -251,7 +243,7 @@ export default async (req) => {
         if (room.players.p2) return json({ error: "That room's already full" }, 409);
 
         const token = genToken();
-        room.players.p2 = { token, name: "Player 2", budget: 20, items: [] };
+        room.players.p2 = { token, name: String(body.name || "").trim().slice(0, 20) || "Player 2", budget: 20, items: [] };
         room.phase = "auction";
         if (room.themeType === "slotted") {
           room.players.p2.filled = {};
