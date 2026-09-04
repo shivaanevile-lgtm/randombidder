@@ -484,6 +484,9 @@ function renderAuction(){
   const meEligible = isSlotted ? g.meEligible : true;
   const myTurn = g.turn === "me" && meEligible;
   const noBidYet = g.currentBidder === null;
+  const isSolo = isSlotted && meEligible && !g.eligibleOpp;
+  const skipsUsed = isSolo ? (g.me.skipCounts[g.currentCategory] || 0) : 0;
+  const skipsLeft = 3 - skipsUsed;
 
   return `
     <div class="eyebrow">${themeIcon(g.theme)} ${g.theme}</div>
@@ -511,7 +514,10 @@ function renderAuction(){
         </div>
         <div class="action-row">
           <button class="btn" id="raise-btn">Raise</button>
-          <button class="btn pass" id="pass-btn">${noBidYet ? "Skip it" : "Let it go"}</button>
+          ${isSolo
+            ? `<button class="btn pass" id="pass-btn" ${skipsLeft<=0?'disabled':''}>${skipsLeft>0 ? `Skip it (${skipsLeft} left)` : 'No skips left'}</button>`
+            : `<button class="btn pass" id="pass-btn">${noBidYet ? "Skip it" : "Let it go"}</button>`
+          }
         </div>
         <div class="waiting">You have $${g.me.budget} left.</div>
       ` : `
@@ -957,8 +963,24 @@ function localPass(role){
       finishLotLocal(g.currentBidder);
     }
   } else {
-    // solo pass — they don't want this specific one, redraw another
-    if(g.themeType === "slotted") drawSlottedLotLocal(); else drawOpenLotLocal();
+    // solo pass — they don't want this specific one; capped at 3 rerolls per
+    // category per player, so nobody can stall forever waiting for a favorite name
+    if(g.themeType === "slotted"){
+      const player = role === "me" ? g.me : g.opponent;
+      const cat = g.currentCategory;
+      const used = player.skipCounts[cat] || 0;
+      if(used < 3){
+        player.skipCounts[cat] = used + 1;
+        drawSlottedLotLocal();
+      } else {
+        // no skips left — this claims the current player instead, at $1 (or free if broke)
+        g.currentBid = player.budget > 0 ? 1 : 0;
+        finishLotLocal(role);
+        return;
+      }
+    } else {
+      drawOpenLotLocal();
+    }
     render();
   }
 }
@@ -1021,11 +1043,17 @@ function aiActPractice(){
   if(g.themeType === "slotted"){
     const needed = totalRemainingNeededLocal(g.opponent, g.categories, g.catIndex);
     const ratingFactor = playerRatingFactor(g.currentItem);
-    maxWillingness = (budget / needed) * (1.5 + Math.random()*1.0) * ratingFactor;
+    const lastPickBoost = needed === 1 ? 1.4 : 1;
+    maxWillingness = (budget / needed) * (1.6 + Math.random()*1.1) * ratingFactor * lastPickBoost;
   } else {
     const owned = g.opponent.items.length;
     const stillNeeded = Math.max(1, 5 - owned);
-    maxWillingness = (budget / stillNeeded) * (1.3 + Math.random()*0.9);
+    const isLastPick = stillNeeded === 1;
+    maxWillingness = (budget / stillNeeded) * (1.6 + Math.random()*1.1);
+    if(isLastPick){
+      // no reason to hold cash back on the final pick — go for it
+      maxWillingness = Math.max(maxWillingness, budget * (0.7 + Math.random()*0.3));
+    }
   }
 
   const bumpRoll = Math.random();
@@ -1147,8 +1175,8 @@ function startPracticeSlotted(){
     currentItem: null, currentCategory:null, currentCategoryLabel: null, meEligible: true,
     currentBid:0, currentBidder:null, turn:"me", openPasses:0, nextStarter:"me",
     resolved: null,
-    me: { budget:20, items:[], filled:{GK:0,DEF:0,MID:0,ATT:0} },
-    opponent: { name:"AI", budget:20, items:[], filled:{GK:0,DEF:0,MID:0,ATT:0} }
+    me: { budget:20, items:[], filled:{GK:0,DEF:0,MID:0,ATT:0}, skipCounts:{GK:0,DEF:0,MID:0,ATT:0} },
+    opponent: { name:"AI", budget:20, items:[], filled:{GK:0,DEF:0,MID:0,ATT:0}, skipCounts:{GK:0,DEF:0,MID:0,ATT:0} }
   };
 
   state.screen = "auction";
@@ -1354,3 +1382,4 @@ render();
 </script>
 </body>
 </html>
+
