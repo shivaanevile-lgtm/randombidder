@@ -22,6 +22,20 @@ function other(role) { return role === "p1" ? "p2" : "p1"; }
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json" } });
 }
+
+// Reads a room along with its ETag, and writes back only if nothing else has
+// modified it in the meantime (optimistic concurrency). This is what stops two
+// near-simultaneous requests from silently clobbering each other's progress —
+// the classic symptom being "an item gets un-awarded and the draft repeats."
+async function loadRoomWithEtag(store, code) {
+  const result = await store.getWithMetadata(code, { type: "json" });
+  if (!result) return null;
+  return { room: result.data, etag: result.etag };
+}
+async function saveRoomIfUnchanged(store, code, room, etag) {
+  const result = await store.setJSON(code, room, { onlyIfMatch: etag });
+  return !!(result && result.modified !== false);
+}
 function roleForToken(room, token) {
   if (room.players.host && room.players.host.token === token) return "host";
   if (room.players.p1 && room.players.p1.token === token) return "p1";
@@ -195,7 +209,7 @@ function sanitize(room, role) {
 }
 
 export default async (req) => {
-  const store = getStore("rooms");
+  const store = getStore({ name: "rooms", consistency: "strong" });
   const url = new URL(req.url);
 
   try {
@@ -291,23 +305,27 @@ export default async (req) => {
 
       if (action === "join") {
         const code = String(body.code || "").toUpperCase();
-        const room = await store.get(code, { type: "json" });
-        if (!room) return json({ error: "Room not found" }, 404);
+        const loaded = await loadRoomWithEtag(store, code);
+        if (!loaded) return json({ error: "Room not found" }, 404);
+        const room = loaded.room;
         const bidderName = String(body.name || "").trim().slice(0, 20);
 
         if (room.mode === "hosted") {
           if (room.players.p1 && room.players.p2) return json({ error: "That room's already full" }, 409);
           const token = genToken();
+          let role;
           if (!room.players.p1) {
             room.players.p1 = { token, name: bidderName || "Player 1", budget: 20, items: [] };
-            await store.setJSON(code, room);
-            return json({ code, token, role: "p1" });
+            role = "p1";
+          } else {
+            room.players.p2 = { token, name: bidderName || "Player 2", budget: 20, items: [] };
+            room.phase = "auction";
+            drawOpenLot(room);
+            role = "p2";
           }
-          room.players.p2 = { token, name: bidderName || "Player 2", budget: 20, items: [] };
-          room.phase = "auction";
-          drawOpenLot(room);
-          await store.setJSON(code, room);
-          return json({ code, token, role: "p2" });
+          const ok = await saveRoomIfUnchanged(store, code, room, loaded.etag);
+          if (!ok) return json({ error: "That code was just claimed by someone else — try again." }, 409);
+          return json({ code, token, role });
         }
 
         if (room.players.p2) return json({ error: "That room's already full" }, 409);
@@ -324,15 +342,17 @@ export default async (req) => {
           drawOpenLot(room);
         }
 
-        await store.setJSON(code, room);
+        const ok = await saveRoomIfUnchanged(store, code, room, loaded.etag);
+        if (!ok) return json({ error: "That code was just claimed by someone else — try again." }, 409);
         return json({ code, token, role: "p2" });
       }
 
       if (action === "raise" || action === "pass") {
         const code = String(body.code || "").toUpperCase();
         const token = body.token || "";
-        const room = await store.get(code, { type: "json" });
-        if (!room) return json({ error: "Room not found" }, 404);
+        const loaded = await loadRoomWithEtag(store, code);
+        if (!loaded) return json({ error: "Room not found" }, 404);
+        const room = loaded.room;
         if (room.phase !== "auction") return json({ error: "The auction isn't running" }, 400);
         const role = roleForToken(room, token);
         if (!role) return json({ error: "Invalid token" }, 403);
@@ -388,15 +408,17 @@ export default async (req) => {
           }
         }
 
-        await store.setJSON(code, room);
+        const ok = await saveRoomIfUnchanged(store, code, room, loaded.etag);
+        if (!ok) return json({ error: "Someone else's action landed first — try again." }, 409);
         return json(sanitize(room, role));
       }
 
       if (action === "newRound") {
         const code = String(body.code || "").toUpperCase();
         const token = body.token || "";
-        const room = await store.get(code, { type: "json" });
-        if (!room) return json({ error: "Room not found" }, 404);
+        const loaded = await loadRoomWithEtag(store, code);
+        if (!loaded) return json({ error: "Room not found" }, 404);
+        const room = loaded.room;
         const role = roleForToken(room, token);
         if (!role) return json({ error: "Invalid token" }, 403);
         if (room.mode === "hosted" ? role !== "host" : role !== "p1") {
@@ -444,7 +466,8 @@ export default async (req) => {
           drawSlottedLot(room);
         }
 
-        await store.setJSON(code, room);
+        const ok = await saveRoomIfUnchanged(store, code, room, loaded.etag);
+        if (!ok) return json({ error: "Someone else's action landed first — try again." }, 409);
         return json(sanitize(room, role));
       }
 
