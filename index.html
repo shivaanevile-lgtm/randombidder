@@ -172,19 +172,25 @@ const ICON_POOLS = {
   ATT: ["Ronaldo Nazário","Pelé","Diego Maradona","Thierry Henry","Zlatan Ibrahimović","Didier Drogba","Wayne Rooney","David Villa"]
 };
 
-// Builds each position's draft order fresh for a new game: shuffled current pros + icons,
-// with one random icon guaranteed to lead off each position so both players always get
-// a shot at at least one legend per position, every draft.
+// Builds each position's draft pool for a new game, and pre-selects one random icon
+// per player (removed from the pool so it can't also come up for bidding) — guaranteeing
+// every player's final 5-person squad includes at least one legend, no matter how bidding goes.
 function buildDraftPools(){
   const pools = {};
   Object.keys(FOOTBALL_THEME.pools).forEach(pos=>{
-    const currents = FOOTBALL_THEME.pools[pos];
-    const icons = ICON_POOLS[pos] || [];
-    const guaranteedIcon = icons[Math.floor(Math.random()*icons.length)];
-    const rest = shuffleArr([...currents, ...icons.filter(n=>n!==guaranteedIcon)]);
-    pools[pos] = [guaranteedIcon, ...rest];
+    pools[pos] = shuffleArr([...FOOTBALL_THEME.pools[pos], ...ICON_POOLS[pos]]);
   });
-  return pools;
+
+  const cats = FOOTBALL_THEME.categories.map(c=>c.cat);
+  function pickGuaranteedIcon(){
+    const cat = cats[Math.floor(Math.random()*cats.length)];
+    const iconCandidates = pools[cat].filter(n => ICON_POOLS[cat].includes(n));
+    const chosen = iconCandidates[Math.floor(Math.random()*iconCandidates.length)];
+    pools[cat] = pools[cat].filter(n => n !== chosen);
+    return { cat, name: chosen };
+  }
+
+  return { pools, guaranteedP1: pickGuaranteedIcon(), guaranteedP2: pickGuaranteedIcon() };
 }
 function playerRatingFactor(name){
   const rating = PLAYER_RATINGS[name] || 7;
@@ -685,8 +691,9 @@ async function handleGo(){
     state.connecting = true; render();
     try{
       const themeName = state.theme==="__custom__" ? state.customText : state.theme==="__football__" ? FOOTBALL_THEME.label : state.theme;
+      const built = state.themeType==="slotted" ? buildDraftPools() : null;
       const payload = state.themeType==="slotted"
-        ? { action:"create", themeType:"slotted", theme: themeName, categories: FOOTBALL_THEME.categories, pools: buildDraftPools() }
+        ? { action:"create", themeType:"slotted", theme: themeName, categories: FOOTBALL_THEME.categories, pools: built.pools, guaranteedP1: built.guaranteedP1, guaranteedP2: built.guaranteedP2 }
         : { action:"create", themeType:"open", theme: themeName, lots: state.pool };
       const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
       const data = await res.json();
@@ -824,8 +831,9 @@ async function handleNewRound(){
   render();
   try{
     const themeName = state.theme==="__custom__" ? state.customText : state.theme==="__football__" ? FOOTBALL_THEME.label : state.theme;
+    const built = state.themeType==="slotted" ? buildDraftPools() : null;
     const payload = state.themeType==="slotted"
-      ? { action:"newRound", code: state.roomCode, token: state.token, themeType:"slotted", theme: themeName, categories: FOOTBALL_THEME.categories, pools: buildDraftPools() }
+      ? { action:"newRound", code: state.roomCode, token: state.token, themeType:"slotted", theme: themeName, categories: FOOTBALL_THEME.categories, pools: built.pools, guaranteedP1: built.guaranteedP1, guaranteedP2: built.guaranteedP2 }
       : { action:"newRound", code: state.roomCode, token: state.token, themeType:"open", theme: themeName, lots: state.pool };
     const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
     const data = await res.json();
@@ -1027,7 +1035,8 @@ function drawOpenLotLocal(){
 
 function startPracticeSlotted(){
   const cats = FOOTBALL_THEME.categories.map(c=>({...c}));
-  const pools = buildDraftPools();
+  const built = buildDraftPools();
+  const pools = built.pools;
 
   state.game = {
     theme: FOOTBALL_THEME.label, themeType: "slotted",
@@ -1038,6 +1047,12 @@ function startPracticeSlotted(){
     me: { budget:20, items:[], filled:{GK:0,DEF:0,MID:0,ATT:0} },
     opponent: { name:"AI", budget:20, items:[], filled:{GK:0,DEF:0,MID:0,ATT:0} }
   };
+
+  state.game.me.items.push({ n:built.guaranteedP1.name, p:0, freebie:true, cat:built.guaranteedP1.cat });
+  state.game.me.filled[built.guaranteedP1.cat] += 1;
+  state.game.opponent.items.push({ n:built.guaranteedP2.name, p:0, freebie:true, cat:built.guaranteedP2.cat });
+  state.game.opponent.filled[built.guaranteedP2.cat] += 1;
+
   state.screen = "auction";
   fetchGlobalPrefs();
   drawSlottedLotLocal();
