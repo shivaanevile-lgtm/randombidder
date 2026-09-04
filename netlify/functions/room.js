@@ -231,6 +231,13 @@ export default async (req) => {
             },
           };
           categories.forEach((c) => { room.players.p1.filled[c.cat] = 0; });
+          const g1 = body.guaranteedP1;
+          if (g1 && g1.cat && g1.name) {
+            room.players.p1.items.push({ n: g1.name, p: 0, freebie: true, cat: g1.cat });
+            room.players.p1.filled[g1.cat] = 1;
+          }
+          const g2 = body.guaranteedP2;
+          room.pendingGuaranteedP2 = (g2 && g2.cat && g2.name) ? g2 : null;
         }
 
         await store.setJSON(code, room);
@@ -249,6 +256,12 @@ export default async (req) => {
         if (room.themeType === "slotted") {
           room.players.p2.filled = {};
           room.categories.forEach((c) => { room.players.p2.filled[c.cat] = 0; });
+          const g2 = room.pendingGuaranteedP2;
+          if (g2 && g2.cat && g2.name) {
+            room.players.p2.items.push({ n: g2.name, p: 0, freebie: true, cat: g2.cat });
+            room.players.p2.filled[g2.cat] = 1;
+          }
+          room.pendingGuaranteedP2 = null;
           drawSlottedLot(room);
         } else {
           drawOpenLot(room);
@@ -336,6 +349,16 @@ export default async (req) => {
           room.players.p1.filled = {};
           room.players.p2.filled = {};
           categories.forEach((c) => { room.players.p1.filled[c.cat] = 0; room.players.p2.filled[c.cat] = 0; });
+          const g1 = body.guaranteedP1;
+          if (g1 && g1.cat && g1.name) {
+            room.players.p1.items.push({ n: g1.name, p: 0, freebie: true, cat: g1.cat });
+            room.players.p1.filled[g1.cat] = 1;
+          }
+          const g2 = body.guaranteedP2;
+          if (g2 && g2.cat && g2.name) {
+            room.players.p2.items.push({ n: g2.name, p: 0, freebie: true, cat: g2.cat });
+            room.players.p2.filled[g2.cat] = 1;
+          }
           drawSlottedLot(room);
         }
 
