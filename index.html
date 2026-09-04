@@ -427,7 +427,7 @@ function renderConnect(){
         <label>Room code</label>
         <input type="text" id="join-code" maxlength="5" placeholder="ABCDE" value="${state.joinCode}" style="text-transform:uppercase;letter-spacing:4px;font-family:var(--mono);font-size:20px;text-align:center;">
       ` : ""}
-      <button class="btn wide" id="go-btn" ${(themeReady && nicknameReady) ? '' : 'disabled'}>
+      <button class="btn wide" id="go-btn" ${(themeReady && nicknameReady && !state.connecting) ? '' : 'disabled'}>
         ${state.connecting ? "Connecting..." : state.connectMode==="join" ? "Join room" : state.connectMode==="create" ? "Create room" : "Start practice round"}
       </button>
     </div>
@@ -734,6 +734,7 @@ function attachHandlers(){
 }
 
 async function handleGo(){
+  if(state.connecting) return; // guard against a double-tap sneaking in before the button disables
   state.errorMsg = null;
 
   if(state.connectMode === "practice"){
@@ -1382,4 +1383,3 @@ render();
 </script>
 </body>
 </html>
-
