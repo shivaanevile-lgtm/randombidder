@@ -23,6 +23,7 @@ function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json" } });
 }
 function roleForToken(room, token) {
+  if (room.players.host && room.players.host.token === token) return "host";
   if (room.players.p1 && room.players.p1.token === token) return "p1";
   if (room.players.p2 && room.players.p2.token === token) return "p2";
   return null;
@@ -146,13 +147,38 @@ function resolveLot(room, winnerRoleOrNull) {
 
 // ---------- sanitize ----------
 
+function sanitizeHost(room) {
+  const p1 = room.players.p1;
+  const p2 = room.players.p2;
+  return {
+    code: room.code,
+    theme: room.theme,
+    themeType: room.themeType,
+    mode: "hosted",
+    phase: room.phase,
+    lotIndex: room.themeType === "open" ? room.lotIndex : null,
+    totalLots: room.themeType === "open" ? room.lots.length : null,
+    currentItem: room.phase === "auction" ? room.currentItem : null,
+    currentBid: room.currentBid,
+    currentBidder: room.currentBidder === "p1" ? "A" : (room.currentBidder === "p2" ? "B" : null),
+    turn: room.turn === "p1" ? "A" : (room.turn === "p2" ? "B" : null),
+    resolved: room.resolved,
+    bidderAReady: !!p1,
+    bidderBReady: !!p2,
+    playerA: p1 ? { name: p1.name, budget: p1.budget, items: p1.items } : null,
+    playerB: p2 ? { name: p2.name, budget: p2.budget, items: p2.items } : null,
+  };
+}
+
 function sanitize(room, role) {
+  if (role === "host") return sanitizeHost(room);
   const opp = room.players[other(role)];
   const meEligible = room.themeType === "slotted" ? (role === "p1" ? room.eligibleP1 : room.eligibleP2) : true;
   return {
     code: room.code,
     theme: room.theme,
     themeType: room.themeType,
+    mode: room.mode || null,
     phase: room.phase,
     lotIndex: room.themeType === "open" ? room.lotIndex : null,
     totalLots: room.themeType === "open" ? room.lots.length : null,
@@ -163,7 +189,7 @@ function sanitize(room, role) {
     currentBidder: room.currentBidder === role ? "me" : (room.currentBidder ? "opp" : null),
     turn: room.turn === role ? "me" : "opp",
     resolved: room.resolved,
-    me: { role, name: room.players[role].name, budget: room.players[role].budget, items: room.players[role].items },
+    me: { role, name: room.players[role].name, budget: room.players[role].budget, items: room.players[role].items, skipCounts: room.players[role].skipCounts || {} },
     opponent: opp ? { name: opp.name, budget: opp.budget, items: opp.items } : null,
   };
 }
@@ -186,6 +212,33 @@ export default async (req) => {
     if (req.method === "POST") {
       const body = await req.json();
       const action = body.action;
+
+      if (action === "createHosted") {
+        const theme = String(body.theme || "").slice(0, 60);
+        const lots = Array.isArray(body.lots) ? body.lots.slice(0, 30).map((s) => String(s).slice(0, 60)) : [];
+        if (!theme) return json({ error: "Need a theme" }, 400);
+        if (lots.length < 5) return json({ error: "Need at least 5 items" }, 400);
+
+        let code, attempts = 0;
+        do { code = genCode(); attempts += 1; } while ((await store.get(code)) && attempts < 10);
+        const token = genToken();
+        const hostName = String(body.name || "").trim().slice(0, 20) || "Host";
+
+        const room = {
+          code, theme, themeType: "open", mode: "hosted",
+          lots: shuffle(lots), lotIndex: 0, unsold: [],
+          nextStarter: "p1", currentItem: null, currentBid: 0, currentBidder: null, turn: "p1", openPasses: 0,
+          phase: "lobby", resolved: null,
+          players: {
+            host: { token, name: hostName },
+            p1: null,
+            p2: null,
+          },
+        };
+
+        await store.setJSON(code, room);
+        return json({ code, token, role: "host" });
+      }
 
       if (action === "create") {
         const themeType = body.themeType === "slotted" ? "slotted" : "open";
@@ -225,11 +278,11 @@ export default async (req) => {
             eligibleP1: true, eligibleP2: true,
             phase: "lobby", resolved: null,
             players: {
-              p1: { token, name: p1Name, budget: 20, items: [], filled: {} },
+              p1: { token, name: p1Name, budget: 20, items: [], filled: {}, skipCounts: {} },
               p2: null,
             },
           };
-          categories.forEach((c) => { room.players.p1.filled[c.cat] = 0; });
+          categories.forEach((c) => { room.players.p1.filled[c.cat] = 0; room.players.p1.skipCounts[c.cat] = 0; });
         }
 
         await store.setJSON(code, room);
@@ -240,14 +293,32 @@ export default async (req) => {
         const code = String(body.code || "").toUpperCase();
         const room = await store.get(code, { type: "json" });
         if (!room) return json({ error: "Room not found" }, 404);
+        const bidderName = String(body.name || "").trim().slice(0, 20);
+
+        if (room.mode === "hosted") {
+          if (room.players.p1 && room.players.p2) return json({ error: "That room's already full" }, 409);
+          const token = genToken();
+          if (!room.players.p1) {
+            room.players.p1 = { token, name: bidderName || "Player 1", budget: 20, items: [] };
+            await store.setJSON(code, room);
+            return json({ code, token, role: "p1" });
+          }
+          room.players.p2 = { token, name: bidderName || "Player 2", budget: 20, items: [] };
+          room.phase = "auction";
+          drawOpenLot(room);
+          await store.setJSON(code, room);
+          return json({ code, token, role: "p2" });
+        }
+
         if (room.players.p2) return json({ error: "That room's already full" }, 409);
 
         const token = genToken();
-        room.players.p2 = { token, name: String(body.name || "").trim().slice(0, 20) || "Player 2", budget: 20, items: [] };
+        room.players.p2 = { token, name: bidderName || "Player 2", budget: 20, items: [] };
         room.phase = "auction";
         if (room.themeType === "slotted") {
           room.players.p2.filled = {};
-          room.categories.forEach((c) => { room.players.p2.filled[c.cat] = 0; });
+          room.players.p2.skipCounts = {};
+          room.categories.forEach((c) => { room.players.p2.filled[c.cat] = 0; room.players.p2.skipCounts[c.cat] = 0; });
           drawSlottedLot(room);
         } else {
           drawOpenLot(room);
@@ -297,9 +368,19 @@ export default async (req) => {
               resolveLot(room, room.currentBidder);
             }
           } else {
-            // solo pass — they don't want this specific one, redraw another
+            // solo pass — they don't want this specific one; capped at 3 rerolls
+            // per category per player so nobody can stall forever
             if (room.themeType === "slotted") {
-              drawSlottedLot(room);
+              const player = room.players[role];
+              const cat = room.currentCategory;
+              const used = (player.skipCounts && player.skipCounts[cat]) || 0;
+              if (used < 3) {
+                player.skipCounts[cat] = used + 1;
+                drawSlottedLot(room);
+              } else {
+                room.currentBid = player.budget > 0 ? 1 : 0;
+                resolveLot(room, role);
+              }
             } else {
               if (room.currentItem) room.unsold.push(room.currentItem);
               drawOpenLot(room);
@@ -318,7 +399,9 @@ export default async (req) => {
         if (!room) return json({ error: "Room not found" }, 404);
         const role = roleForToken(room, token);
         if (!role) return json({ error: "Invalid token" }, 403);
-        if (role !== "p1") return json({ error: "Only the room host can start the next round" }, 403);
+        if (room.mode === "hosted" ? role !== "host" : role !== "p1") {
+          return json({ error: "Only the room host can start the next round" }, 403);
+        }
         if (room.phase !== "results") return json({ error: "This round isn't finished yet" }, 400);
 
         const themeType = body.themeType === "slotted" ? "slotted" : "open";
@@ -352,7 +435,12 @@ export default async (req) => {
           room.catIndex = 0;
           room.players.p1.filled = {};
           room.players.p2.filled = {};
-          categories.forEach((c) => { room.players.p1.filled[c.cat] = 0; room.players.p2.filled[c.cat] = 0; });
+          room.players.p1.skipCounts = {};
+          room.players.p2.skipCounts = {};
+          categories.forEach((c) => {
+            room.players.p1.filled[c.cat] = 0; room.players.p2.filled[c.cat] = 0;
+            room.players.p1.skipCounts[c.cat] = 0; room.players.p2.skipCounts[c.cat] = 0;
+          });
           drawSlottedLot(room);
         }
 
