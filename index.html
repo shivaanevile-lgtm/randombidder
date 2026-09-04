@@ -354,6 +354,8 @@ function render(){
   else if(state.screen==="room-wait") app.innerHTML = renderRoomWait();
   else if(state.screen==="auction") app.innerHTML = renderAuction();
   else if(state.screen==="results") app.innerHTML = renderResults();
+  else if(state.screen==="host-auction") app.innerHTML = renderHostAuction();
+  else if(state.screen==="host-results") app.innerHTML = renderHostResults();
   attachHandlers();
 
   if(activeId){
@@ -395,6 +397,12 @@ function renderSetup(){
       <h3>Play online</h3>
       <p>Create a room, share the code with a friend on their own device, and auction it out live.</p>
     </div>
+    ${state.themeType === "open" ? `
+    <div class="card mode-card" data-connect="hostCreate">
+      <h3>Host an auction</h3>
+      <p>You run the show — two other players join and bid against each other while you watch it play out live.</p>
+    </div>
+    ` : ""}
     <div class="card mode-card" data-connect="join">
       <h3>Join a room</h3>
       <p>Got a code from a friend? Jump into their auction.</p>
@@ -411,16 +419,22 @@ function renderSetup(){
 function renderConnect(){
   const themeReady = state.themeType === "slotted" || state.pool.length > 0;
   const themeLabel = state.theme==="__custom__" ? state.customText : state.theme==="__football__" ? FOOTBALL_THEME.label : state.theme;
-  const needsNickname = state.connectMode === "create" || state.connectMode === "join";
+  const needsNickname = state.connectMode === "create" || state.connectMode === "join" || state.connectMode === "hostCreate";
   const nicknameReady = !needsNickname || state.nickname.trim().length > 0;
+  const titleMap = { join:"Join a room", create:"Create a room", hostCreate:"Host an auction" };
+  const buttonLabelMap = { join:"Join room", create:"Create room", hostCreate:"Host room", practice:"Start practice round" };
   return `
-    <div class="eyebrow">${state.connectMode==="join" ? "Join a room" : state.connectMode==="create" ? "Create a room" : "Practice vs AI"}</div>
+    <div class="eyebrow">${titleMap[state.connectMode] || "Practice vs AI"}</div>
     <h1>${state.connectMode==="join" ? "Enter the code" : "Ready to go"}</h1>
-    <div class="sub">${state.connectMode==="join" ? "Ask your opponent for their 5-character room code." : "Theme: " + (themeLabel || "none picked yet")}</div>
+    <div class="sub">${
+      state.connectMode==="join" ? "Ask your opponent for their 5-character room code."
+      : state.connectMode==="hostCreate" ? "You won't bid yourself — two players will join and compete. Theme: " + (themeLabel || "none picked yet")
+      : "Theme: " + (themeLabel || "none picked yet")
+    }</div>
     ${state.errorMsg ? `<div class="error-msg">${state.errorMsg}</div>` : ""}
     <div class="card">
       ${needsNickname ? `
-        <label>Your nickname</label>
+        <label>${state.connectMode==="hostCreate" ? "Your name (shown as the host)" : "Your nickname"}</label>
         <input type="text" id="nickname-input" maxlength="20" placeholder="e.g. Alex" value="${state.nickname||''}">
       ` : ""}
       ${state.connectMode==="join" ? `
@@ -428,7 +442,7 @@ function renderConnect(){
         <input type="text" id="join-code" maxlength="5" placeholder="ABCDE" value="${state.joinCode}" style="text-transform:uppercase;letter-spacing:4px;font-family:var(--mono);font-size:20px;text-align:center;">
       ` : ""}
       <button class="btn wide" id="go-btn" ${(themeReady && nicknameReady && !state.connecting) ? '' : 'disabled'}>
-        ${state.connecting ? "Connecting..." : state.connectMode==="join" ? "Join room" : state.connectMode==="create" ? "Create room" : "Start practice round"}
+        ${state.connecting ? "Connecting..." : (buttonLabelMap[state.connectMode] || "Start practice round")}
       </button>
     </div>
     <button class="btn secondary wide" id="back-btn">Back</button>
@@ -438,10 +452,12 @@ function renderConnect(){
 // ---------- ROOM WAIT ----------
 
 function renderRoomWait(){
+  const isHost = state.role === "host";
+  const bidderCount = isHost ? [state.game && state.game.bidderAReady, state.game && state.game.bidderBReady].filter(Boolean).length : 0;
   return `
     <div class="eyebrow">${state.game ? themeIcon(state.game.theme)+' '+state.game.theme : ''}</div>
-    <h1>Waiting for your opponent</h1>
-    <div class="sub">Send them this code. As soon as they join, the auction starts.</div>
+    <h1>${isHost ? "Waiting for both players" : "Waiting for your opponent"}</h1>
+    <div class="sub">${isHost ? `Send this code to two players — they'll bid against each other while you watch. ${bidderCount}/2 joined so far.` : "Send them this code. As soon as they join, the auction starts."}</div>
     <div class="card">
       <div class="code-display">${state.roomCode}</div>
       <button class="btn secondary wide" id="copy-btn">Copy code</button>
@@ -645,6 +661,73 @@ function renderResults(){
   `;
 }
 
+function renderHostAuction(){
+  const g = state.game;
+  if(!g) return `<div class="loading">Loading...</div>`;
+
+  if(state.revealing){
+    const r = state.revealing;
+    const aWon = r.winner === "A", bWon = r.winner === "B";
+    return `
+      <div class="eyebrow">${themeIcon(g.theme)} ${g.theme} · you're hosting</div>
+      <h1>Sold</h1>
+      <div class="card lot-card">
+        <div class="lot-name">${r.item}</div>
+        ${r.winner ? `<div class="reveal-tag">${aWon ? (g.playerA?g.playerA.name:'Bidder A') : (g.playerB?g.playerB.name:'Bidder B')} wins it</div><div class="reveal-price">$${r.price}</div>` : `<div class="reveal-tag">Nobody wanted it enough.</div>`}
+      </div>
+    `;
+  }
+
+  const bothJoined = g.bidderAReady && g.bidderBReady;
+  return `
+    <div class="eyebrow">${themeIcon(g.theme)} ${g.theme} · you're hosting</div>
+    <h1>Live auction</h1>
+    <div class="progress-label">Lot ${g.lotIndex + 1} of ${g.totalLots}</div>
+
+    <div class="card lot-card">
+      <div class="lot-meta">Up for bid</div>
+      <div class="lot-name">${g.currentItem || "—"}</div>
+      <div class="bid-status">
+        ${g.currentBidder===null ? "No bids yet" : `<span class="amt">$${g.currentBid}</span> <span class="who">— currently held by ${g.currentBidder==='A' ? (g.playerA?g.playerA.name:'Bidder A') : (g.playerB?g.playerB.name:'Bidder B')}</span>`}
+      </div>
+      ${state.bidTicker.length ? `<div class="bid-ticker">${state.bidTicker.map(t=>`<span>${t}</span>`).join(' <span class="arrow">→</span> ')}</div>` : ""}
+      <div class="waiting">You're just watching — ${g.turn==='A' ? (g.playerA?g.playerA.name:'Bidder A') : (g.playerB?g.playerB.name:'Bidder B')}'s move.</div>
+    </div>
+
+    <div class="stalls">
+      ${renderStall(g.playerA || {name:'Bidder A',budget:20,items:[]}, g.playerA?g.playerA.name:'Bidder A — waiting to join')}
+      ${renderStall(g.playerB || {name:'Bidder B',budget:20,items:[]}, g.playerB?g.playerB.name:'Bidder B — waiting to join')}
+    </div>
+  `;
+}
+
+function renderHostResults(){
+  const g = state.game;
+  return `
+    <div class="eyebrow">${themeIcon(g.theme)} ${g.theme} · hosted by ${state.nickname||'you'}</div>
+    <h1>The reveal</h1>
+    <div class="sub">Here's what your two players walked away with.</div>
+    <div class="stalls">
+      ${renderStall(g.playerA || {name:'Bidder A',budget:20,items:[]}, g.playerA?g.playerA.name:'Bidder A')}
+      ${renderStall(g.playerB || {name:'Bidder B',budget:20,items:[]}, g.playerB?g.playerB.name:'Bidder B')}
+    </div>
+    <div class="card">
+      <label>Play another round with the same code — pick a new theme</label>
+      <div class="row">
+        ${Object.keys(OPEN_THEMES).map(t=>`<button class="chip ${state.theme===t?'active':''}" data-theme="${t}">${themeIcon(t)} ${t}</button>`).join("")}
+        <button class="chip ${state.theme==='__custom__'?'active':''}" data-theme="__custom__">${themeIcon('__custom__')} Custom...</button>
+      </div>
+      ${state.theme==="__custom__" ? `
+        <input type="text" id="custom-input" placeholder="e.g. treehouse, food truck..." value="${state.customText||''}">
+        <button class="btn secondary" id="gen-custom">${state.loadingCustom?'Cooking up items...':'Generate items'}</button>
+      ` : ""}
+      ${state.errorMsg ? `<div class="error-msg">${state.errorMsg}</div>` : ""}
+      <button class="btn wide" id="next-round-btn" ${(state.pool.length>0) ? '' : 'disabled'}>${state.connecting ? "Starting..." : "Start next round"}</button>
+    </div>
+    <button class="btn secondary wide" id="restart-btn">Leave and start over</button>
+  `;
+}
+
 // ---------- HANDLERS ----------
 
 function attachHandlers(){
@@ -767,6 +850,28 @@ async function handleGo(){
     return;
   }
 
+  if(state.connectMode === "hostCreate"){
+    state.connecting = true; render();
+    try{
+      const themeName = state.theme==="__custom__" ? state.customText : state.theme;
+      const payload = { action:"createHosted", theme: themeName, name: state.nickname.trim(), lots: state.pool };
+      const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
+      state.roomCode = data.code; state.token = data.token; state.role = data.role;
+      state.connecting = false;
+      state.game = { theme: themeName };
+      state.screen = "room-wait";
+      render();
+      startPolling();
+    }catch(e){
+      state.connecting = false;
+      state.errorMsg = "Couldn't reach the room server (" + e.message + "). Online rooms only work once this is deployed to Netlify.";
+      render();
+    }
+    return;
+  }
+
   if(state.connectMode === "join"){
     if(state.joinCode.length < 5){ state.errorMsg = "Enter the full 5-character code."; render(); return; }
     state.connecting = true; render();
@@ -802,6 +907,10 @@ async function pollOnce(){
 }
 
 function applyServerState(data){
+  if(state.role === "host"){
+    applyHostServerState(data);
+    return;
+  }
   const prevKey = state.game && state.game.resolved ? JSON.stringify(state.game.resolved) : null;
   const newKey = data.resolved ? JSON.stringify(data.resolved) : null;
   const prevGame = state.game;
@@ -851,6 +960,52 @@ function applyServerState(data){
     state.bidValue = "";
   } else if(data.phase === "results"){
     if(!state.revealing){ state.screen = "results"; }
+  }
+  render();
+}
+
+function applyHostServerState(data){
+  const prevKey = state.game && state.game.resolved ? JSON.stringify(state.game.resolved) : null;
+  const newKey = data.resolved ? JSON.stringify(data.resolved) : null;
+  const prevGame = state.game;
+
+  if(data.phase === "auction"){
+    if(!prevGame || prevGame.currentItem !== data.currentItem){
+      state.bidTicker = [];
+    } else if(prevGame.currentBid !== data.currentBid && data.currentBidder){
+      const who = data.currentBidder === "A" ? (data.playerA?data.playerA.name:"Bidder A") : (data.playerB?data.playerB.name:"Bidder B");
+      state.bidTicker.push(`${who}: $${data.currentBid}`);
+    }
+  }
+
+  state.game = {
+    theme: data.theme, themeType: data.themeType, phase: data.phase,
+    lotIndex: data.lotIndex, totalLots: data.totalLots,
+    currentItem: data.currentItem, currentBid: data.currentBid, currentBidder: data.currentBidder, turn: data.turn,
+    resolved: data.resolved,
+    bidderAReady: data.bidderAReady, bidderBReady: data.bidderBReady,
+    playerA: data.playerA, playerB: data.playerB
+  };
+
+  if(data.phase === "lobby"){
+    state.screen = "room-wait";
+  } else if(data.phase === "auction"){
+    if(state.screen !== "host-auction"){
+      state.screen = "host-auction";
+      state.verdict = null;
+      state.winner = null;
+    }
+    if(newKey && newKey !== prevKey && !state.revealing){
+      const r = data.resolved;
+      state.revealing = {
+        item: r.item, price: r.price,
+        winner: r.winner === "p1" ? "A" : (r.winner === "p2" ? "B" : null)
+      };
+      triggerRevealEffects(state.revealing);
+      setTimeout(()=>{ state.revealing = null; render(); }, 1900);
+    }
+  } else if(data.phase === "results"){
+    if(!state.revealing){ state.screen = "host-results"; }
   }
   render();
 }
