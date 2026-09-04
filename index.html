@@ -153,8 +153,39 @@ const PLAYER_RATINGS = {
   "Lamine Yamal":9, "Khvicha Kvaratskhelia":8, "Antoine Griezmann":8, "Robert Lewandowski":8,
   "Julian Alvarez":8, "Alexander Isak":8, "Ollie Watkins":7, "Rasmus Hojlund":7,
   "Marcus Rashford":7, "Phil Foden":9, "Cole Palmer":8, "Nico Williams":8, "Gonçalo Ramos":7,
-  "Serhou Guirassy":7
+  "Serhou Guirassy":7,
+  // icons
+  "Gianluigi Buffon":9, "Iker Casillas":9, "Oliver Kahn":9, "Petr Cech":8, "Edwin van der Sar":8,
+  "Peter Schmeichel":9, "Dino Zoff":8, "Lev Yashin":9,
+  "Paolo Maldini":10, "Franz Beckenbauer":10, "Fabio Cannavaro":9, "Carles Puyol":9,
+  "Roberto Carlos":9, "Cafu":9, "Sergio Ramos":9, "Rio Ferdinand":8,
+  "Zinedine Zidane":10, "Andres Iniesta":10, "Xavi Hernandez":10, "Steven Gerrard":9,
+  "Frank Lampard":9, "Andrea Pirlo":9, "Michael Ballack":8, "Ronaldinho":9,
+  "Ronaldo Nazário":10, "Pelé":10, "Diego Maradona":10, "Thierry Henry":9,
+  "Zlatan Ibrahimović":9, "Didier Drogba":8, "Wayne Rooney":8, "David Villa":8
 };
+
+const ICON_POOLS = {
+  GK: ["Gianluigi Buffon","Iker Casillas","Oliver Kahn","Petr Cech","Edwin van der Sar","Peter Schmeichel","Dino Zoff","Lev Yashin"],
+  DEF: ["Paolo Maldini","Franz Beckenbauer","Fabio Cannavaro","Carles Puyol","Roberto Carlos","Cafu","Sergio Ramos","Rio Ferdinand"],
+  MID: ["Zinedine Zidane","Andres Iniesta","Xavi Hernandez","Steven Gerrard","Frank Lampard","Andrea Pirlo","Michael Ballack","Ronaldinho"],
+  ATT: ["Ronaldo Nazário","Pelé","Diego Maradona","Thierry Henry","Zlatan Ibrahimović","Didier Drogba","Wayne Rooney","David Villa"]
+};
+
+// Builds each position's draft order fresh for a new game: shuffled current pros + icons,
+// with one random icon guaranteed to lead off each position so both players always get
+// a shot at at least one legend per position, every draft.
+function buildDraftPools(){
+  const pools = {};
+  Object.keys(FOOTBALL_THEME.pools).forEach(pos=>{
+    const currents = FOOTBALL_THEME.pools[pos];
+    const icons = ICON_POOLS[pos] || [];
+    const guaranteedIcon = icons[Math.floor(Math.random()*icons.length)];
+    const rest = shuffleArr([...currents, ...icons.filter(n=>n!==guaranteedIcon)]);
+    pools[pos] = [guaranteedIcon, ...rest];
+  });
+  return pools;
+}
 function playerRatingFactor(name){
   const rating = PLAYER_RATINGS[name] || 7;
   return rating / 7.5; // ~0.67x for a 5-rated bench player up to ~1.33x for a 10-rated superstar
@@ -655,7 +686,7 @@ async function handleGo(){
     try{
       const themeName = state.theme==="__custom__" ? state.customText : state.theme==="__football__" ? FOOTBALL_THEME.label : state.theme;
       const payload = state.themeType==="slotted"
-        ? { action:"create", themeType:"slotted", theme: themeName, categories: FOOTBALL_THEME.categories, pools: FOOTBALL_THEME.pools }
+        ? { action:"create", themeType:"slotted", theme: themeName, categories: FOOTBALL_THEME.categories, pools: buildDraftPools() }
         : { action:"create", themeType:"open", theme: themeName, lots: state.pool };
       const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
       const data = await res.json();
@@ -794,7 +825,7 @@ async function handleNewRound(){
   try{
     const themeName = state.theme==="__custom__" ? state.customText : state.theme==="__football__" ? FOOTBALL_THEME.label : state.theme;
     const payload = state.themeType==="slotted"
-      ? { action:"newRound", code: state.roomCode, token: state.token, themeType:"slotted", theme: themeName, categories: FOOTBALL_THEME.categories, pools: FOOTBALL_THEME.pools }
+      ? { action:"newRound", code: state.roomCode, token: state.token, themeType:"slotted", theme: themeName, categories: FOOTBALL_THEME.categories, pools: buildDraftPools() }
       : { action:"newRound", code: state.roomCode, token: state.token, themeType:"open", theme: themeName, lots: state.pool };
     const res = await fetch("/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
     const data = await res.json();
@@ -996,8 +1027,7 @@ function drawOpenLotLocal(){
 
 function startPracticeSlotted(){
   const cats = FOOTBALL_THEME.categories.map(c=>({...c}));
-  const pools = {};
-  Object.keys(FOOTBALL_THEME.pools).forEach(k=>{ pools[k] = shuffleArr(FOOTBALL_THEME.pools[k]); });
+  const pools = buildDraftPools();
 
   state.game = {
     theme: FOOTBALL_THEME.label, themeType: "slotted",
