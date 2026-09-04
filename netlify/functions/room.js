@@ -56,44 +56,64 @@ function drawOpenLot(room) {
     item = "Bonus pick";
   }
   room.currentItem = item;
+  room.eligibleP1 = p1Needs;
+  room.eligibleP2 = p2Needs;
 
   if (p1Needs && p2Needs) {
     startTurnAuction(room);
   } else {
-    // one player already has 5 — the other gets the rest for free, uncontested
+    // only one side still needs it — they get a solo turn to claim it themselves,
+    // paying whatever they choose; only truly free if they're down to $0
     const soloRole = p1Needs ? "p1" : "p2";
     const solo = room.players[soloRole];
-    solo.items.push({ n: item, p: 0, freebie: true });
-    room.resolved = { item, price: 0, winner: soloRole, categoryLabel: null };
-    drawOpenLot(room);
+    room.turn = soloRole;
+    room.currentBid = 0;
+    room.currentBidder = null;
+    room.openPasses = 0;
+    if (solo.budget === 0) {
+      resolveLot(room, soloRole);
+    }
   }
 }
 
 function drawSlottedLot(room) {
   let info = room.categories[room.catIndex];
-  // only stay on a category while BOTH players still need it — once only one side
-  // needs it (or neither does), move on; that leftover need gets swept in for free
-  // once the whole draft is done, instead of being auto-awarded mid-draft.
-  while (info && !(room.players.p1.filled[info.cat] < info.count && room.players.p2.filled[info.cat] < info.count)) {
+  while (info && room.players.p1.filled[info.cat] >= info.count && room.players.p2.filled[info.cat] >= info.count) {
     room.catIndex += 1;
     info = room.categories[room.catIndex];
   }
   if (!info) {
-    applyLeftoversSlotted(room);
     room.phase = "results";
     room.currentItem = null;
     room.currentCategory = null;
     room.currentCategoryLabel = null;
     return;
   }
+  const p1Needs = room.players.p1.filled[info.cat] < info.count;
+  const p2Needs = room.players.p2.filled[info.cat] < info.count;
 
   room.currentCategory = info.cat;
   room.currentCategoryLabel = info.label;
   const pool = room.pools[info.cat];
   room.currentItem = pool.length ? pool.shift() : "Free agent " + info.label.toLowerCase();
-  room.eligibleP1 = true;
-  room.eligibleP2 = true;
-  startTurnAuction(room);
+  room.eligibleP1 = p1Needs;
+  room.eligibleP2 = p2Needs;
+
+  if (p1Needs && p2Needs) {
+    startTurnAuction(room);
+  } else {
+    // only one side still needs this position — solo turn to claim it themselves,
+    // paying whatever they choose; only free if they're down to $0
+    const soloRole = p1Needs ? "p1" : "p2";
+    const solo = room.players[soloRole];
+    room.turn = soloRole;
+    room.currentBid = 0;
+    room.currentBidder = null;
+    room.openPasses = 0;
+    if (solo.budget === 0) {
+      resolveLot(room, soloRole);
+    }
+  }
 }
 
 function resolveLot(room, winnerRoleOrNull) {
@@ -124,19 +144,6 @@ function resolveLot(room, winnerRoleOrNull) {
   }
 }
 
-function applyLeftoversSlotted(room) {
-  ["p1", "p2"].forEach((role) => {
-    const p = room.players[role];
-    room.categories.forEach((info) => {
-      while (p.filled[info.cat] < info.count) {
-        const pool = room.pools[info.cat];
-        const name = pool && pool.length ? pool.shift() : ("Free agent " + info.label.toLowerCase());
-        p.items.push({ n: name, p: 0, freebie: true, cat: info.cat });
-        p.filled[info.cat] += 1;
-      }
-    });
-  });
-}
 // ---------- sanitize ----------
 
 function sanitize(room, role) {
@@ -265,20 +272,38 @@ export default async (req) => {
           const budget = room.players[role].budget;
           if (amt <= room.currentBid) return json({ error: "Bid must beat the current bid" }, 400);
           if (amt > budget) return json({ error: "You can't afford that" }, 400);
+
+          const bothEligible = room.eligibleP1 && room.eligibleP2;
           room.currentBid = amt;
-          room.currentBidder = role;
-          room.openPasses = 0;
-          room.turn = other(role);
+          if (bothEligible) {
+            room.currentBidder = role;
+            room.openPasses = 0;
+            room.turn = other(role);
+          } else {
+            // solo lot — nobody to respond, this claims it immediately
+            resolveLot(room, role);
+          }
         } else {
-          if (room.currentBidder === null) {
-            room.openPasses += 1;
-            if (room.openPasses >= 2) {
-              resolveLot(room, null);
+          const bothEligible = room.eligibleP1 && room.eligibleP2;
+          if (bothEligible) {
+            if (room.currentBidder === null) {
+              room.openPasses += 1;
+              if (room.openPasses >= 2) {
+                resolveLot(room, null);
+              } else {
+                room.turn = other(role);
+              }
             } else {
-              room.turn = other(role);
+              resolveLot(room, room.currentBidder);
             }
           } else {
-            resolveLot(room, room.currentBidder);
+            // solo pass — they don't want this specific one, redraw another
+            if (room.themeType === "slotted") {
+              drawSlottedLot(room);
+            } else {
+              if (room.currentItem) room.unsold.push(room.currentItem);
+              drawOpenLot(room);
+            }
           }
         }
 
